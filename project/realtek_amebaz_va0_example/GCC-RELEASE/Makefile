@@ -7,6 +7,7 @@ toolchain:
 ifeq ($(OS),Linux)
 	if [ ! -d ../../../tools/arm-none-eabi-gcc/4_8-2014q3 ] ; then tar -jxf ../../../tools/arm-none-eabi-gcc/gcc-arm-none-eabi-4_8-2014q3-20140805-linux.tar.bz2 -C ../../../tools/arm-none-eabi-gcc/ ; mv ../../../tools/arm-none-eabi-gcc/gcc-arm-none-eabi-4_8-2014q3 ../../../tools/arm-none-eabi-gcc/4_8-2014q3 ; fi
 else
+	if [ ! -f ../../../tools/arm-none-eabi-gcc/4_8-2014q3.tar ] ; then cat ../../../tools/arm-none-eabi-gcc/4_8-2014q3.tar* > ../../../tools/arm-none-eabi-gcc/4_8-2014q3.tar; fi;\
 	if [ ! -d ../../../tools/arm-none-eabi-gcc/4_8-2014q3 ] ; then tar -xf ../../../tools/arm-none-eabi-gcc/4_8-2014q3.tar -C ../../../tools/arm-none-eabi-gcc/ ; fi
 endif
 
