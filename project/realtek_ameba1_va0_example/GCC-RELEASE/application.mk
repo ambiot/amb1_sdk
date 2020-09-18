@@ -501,6 +501,10 @@ CFLAGS += -mcpu=cortex-m3 -mthumb -g2 -w -O2 -Wno-pointer-sign -fno-common -fmes
 LFLAGS = 
 LFLAGS += -mcpu=cortex-m3 -mthumb -g --specs=nano.specs -nostartfiles -Wl,-Map=$(BIN_DIR)/application.map -Os -Wl,--gc-sections -Wl,--cref -Wl,--entry=Reset_Handler -Wl,--no-enum-size-warning -Wl,--no-wchar-size-warning
 LFLAGS += -Wl,-wrap,malloc -Wl,-wrap,free -Wl,-wrap,realloc
+LFLAGS += -Wl,-wrap,rom_psk_CalcGTK
+LFLAGS += -Wl,-wrap,rom_psk_CalcPTK
+LFLAGS += -Wl,-wrap,aes_80211_encrypt
+LFLAGS += -Wl,-wrap,aes_80211_decrypt
 
 LIBFLAGS =
 all: LIBFLAGS += -L../../../component/soc/realtek/8195a/misc/bsp/lib/common/GCC/ -l_platform -l_wlan -l_http -l_dct -l_wps -l_rtlstd -l_websocket -l_xmodem -lm -lc -lnosys -lgcc -l_mdns

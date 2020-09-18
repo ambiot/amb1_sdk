@@ -820,6 +820,10 @@
           <state>--redirect malloc=pvPortMalloc</state>
           <state>--redirect realloc=pvPortReAlloc</state>
           <state>--redirect free=vPortFree</state>
+          <state>--redirect aes_80211_encrypt=ram_patch_aes_80211_encrypt</state>
+          <state>--redirect aes_80211_decrypt=ram_patch_aes_80211_decrypt</state>
+          <state>--redirect rom_psk_CalcGTK=ram_patch_rom_psk_CalcGTK</state>
+          <state>--redirect rom_psk_CalcPTK=ram_patch_rom_psk_CalcPTK</state>
         </option>
         <option>
           <name>IlinkLowLevelInterfaceSlave</name>

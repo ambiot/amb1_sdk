@@ -126,12 +126,14 @@ SECTIONS
     *(.hal.sdrc.text*)
     *(.hal.gpio.text*)
     *(.fwu.text*)
-    *(.text*)    
+    *(.text*)
+    *(.wlan.text*)
   } > BD_RAM
 
   .ram_image2.rodata :
   {
     *(.rodata*)
+    *(.wlan.rodata*)
     *(.fwu.rodata*)
   } > BD_RAM
 
@@ -139,6 +141,7 @@ SECTIONS
   {
     __data_start__ = .;
     *(.data*)
+    *(.wlan.data*)
     . = ALIGN(4);
     __data_end__ = .;
   	__ram_image2_text_end__ = .;    
@@ -153,7 +156,9 @@ SECTIONS
     *(.hal.gpio.data*)
     *(.fwu.data*)
     *(.bss*)
+    *(.wlan.bss*)
     *(COMMON)
+    *(.wlan.bdsram.data*)
     *(.bdsram.data*)
     __bss_end__ = .;
     .ram.bss$$Limit = .;
