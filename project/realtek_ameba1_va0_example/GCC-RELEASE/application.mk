@@ -508,7 +508,7 @@ LFLAGS += -Wl,-wrap,aes_80211_decrypt
 
 LIBFLAGS =
 all: LIBFLAGS += -L../../../component/soc/realtek/8195a/misc/bsp/lib/common/GCC/ -l_platform -l_wlan -l_http -l_dct -l_wps -l_rtlstd -l_websocket -l_xmodem -lm -lc -lnosys -lgcc -l_mdns
-mp: LIBFLAGS += -L../../../component/soc/realtek/8195a/misc/bsp/lib/common/GCC/ -l_platform -l_wlan_mp -l_p2p -l_wps -l_rtlstd -l_dct -l_websocket -l_xmodem -lm -lc -lnosys -lgcc -l_mdns
+mp: LIBFLAGS += -L../../../component/soc/realtek/8195a/misc/bsp/lib/common/GCC/ -l_platform -l_wlan_mp -l_wps -l_rtlstd -l_dct -l_websocket -l_xmodem -lm -lc -lnosys -lgcc -l_mdns
 
 RAMALL_BIN =
 OTA_BIN = 
