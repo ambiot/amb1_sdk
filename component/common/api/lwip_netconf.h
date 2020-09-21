@@ -1,24 +1,11 @@
-/**
-  ******************************************************************************
-  * @file    netconf.h
-  * @author  MCD Application Team
-  * @version V1.1.0
-  * @date    07-October-2011 
-  * @brief   This file contains all the functions prototypes for the netconf.c 
-  *          file.
-  ******************************************************************************
-  * @attention
+/******************************************************************************
   *
-  * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
-  * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE
-  * TIME. AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY
-  * DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING
-  * FROM THE CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE
-  * CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
+  * This module is a confidential and proprietary property of RealTek and
+  * possession or use of this module requires written permission of RealTek.
   *
-  * <h2><center>&copy; COPYRIGHT 2011 STMicroelectronics</center></h2>
-  ******************************************************************************
-  */
+  * Copyright(c) 2016, Realtek Semiconductor Corporation. All rights reserved. 
+  *
+******************************************************************************/
 
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __NETCONF_H
@@ -81,6 +68,7 @@ void LwIP_AUTOIP(struct netif *pnetif);
 #if LWIP_IPV6
 void LwIP_AUTOIP_IPv6(struct netif *pnetif);
 #endif
+uint32_t LWIP_Get_Dynamic_Sleep_Interval();
 #ifdef __cplusplus
 }
 #endif

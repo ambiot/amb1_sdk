@@ -38,10 +38,12 @@ extern "C" {
 #define TKIP_ENABLED       0x0002
 #define AES_ENABLED        0x0004
 #define WSEC_SWFLAG        0x0008
+#define AES_CMAC_ENABLED        0x0010
 
 #define SHARED_ENABLED  0x00008000
 #define WPA_SECURITY    0x00200000
 #define WPA2_SECURITY   0x00400000
+#define WPA3_SECURITY		0x00800000
 #define WPS_ENABLED     0x10000000
 
 #define RTW_MAX_PSK_LEN		(64)
@@ -128,9 +130,12 @@ typedef enum {
     RTW_SECURITY_WPA2_TKIP_PSK  = ( WPA2_SECURITY | TKIP_ENABLED ),                 /**< WPA2 Security with TKIP                 */
     RTW_SECURITY_WPA2_MIXED_PSK = ( WPA2_SECURITY | AES_ENABLED | TKIP_ENABLED ),   /**< WPA2 Security with AES & TKIP           */
     RTW_SECURITY_WPA_WPA2_MIXED = ( WPA_SECURITY  | WPA2_SECURITY ),                /**< WPA/WPA2 Security                       */
+    RTW_SECURITY_WPA2_AES_CMAC = ( WPA2_SECURITY | AES_CMAC_ENABLED),                /**< WPA2 Security with AES and Management Frame Protection                 */
 
     RTW_SECURITY_WPS_OPEN       = WPS_ENABLED,                                      /**< WPS with open security                  */
     RTW_SECURITY_WPS_SECURE     = (WPS_ENABLED | AES_ENABLED),                      /**< WPS with AES security                   */
+
+    RTW_SECURITY_WPA3_AES_PSK 	= (WPA3_SECURITY | AES_ENABLED),						/**< WPA3-AES with AES security  */
 
     RTW_SECURITY_UNKNOWN        = -1,                                               /**< May be returned by scan function if security is unknown. Do not pass this to the join function! */
 
@@ -394,6 +399,15 @@ typedef enum {
 }rtw_scan_mode_t;
 
 /**
+  * @brief  The enumeration lists the supported autoreconnect mode by WIFI driver.
+  */
+typedef enum{
+    RTW_AUTORECONNECT_DISABLE,
+    RTW_AUTORECONNECT_FINITE,
+    RTW_AUTORECONNECT_INFINITE
+} rtw_autoreconnect_mode_t;
+
+/**
   * @brief  The enumeration lists the status to describe the connection link.
   */
 typedef enum {
@@ -474,8 +488,18 @@ typedef enum {
 	RTW_PROMISC_ENABLE_1 = 2, /**< Fetch only B/M packets */
 	RTW_PROMISC_ENABLE_2 = 3, /**< Fetch all 802.11 packets*/
 	RTW_PROMISC_ENABLE_3 = 4, /**< Fetch only B/M 802.11 packets*/
+	RTW_PROMISC_ENABLE_4 = 5, /**< Fetch all 802.11 packets & MIMO PLCP headers. Please note that the PLCP header would be struct rtw_rx_info_t defined in wifi_structures.h*/
 } rtw_rcr_level_t;
 
+/**
+  * @brief  The enumeration lists the promisc rx type.
+  */
+#if CONFIG_UNSUPPORT_PLCPHDR_RPT
+typedef enum {
+	RTW_RX_NORMAL = 0,  /**< The supported 802.11 packet*/
+	RTW_RX_UNSUPPORT = 1,  /**<  Unsupported 802.11 packet info */
+}rtw_rx_type_t;
+#endif
 /**
   * @brief  The enumeration lists the disconnect reasons.
   */
@@ -484,7 +508,11 @@ typedef enum{
 	RTW_NONE_NETWORK = 1,
 	RTW_CONNECT_FAIL = 2,
 	RTW_WRONG_PASSWORD = 3 ,
-	RTW_DHCP_FAIL = 4,
+	RTW_4WAY_HANDSHAKE_TIMEOUT = 4,
+	RTW_DHCP_FAIL = 5,
+	RTW_AUTH_FAIL = 6,
+	RTW_ASSOC_FAIL =7,
+	RTW_DEAUTH_DEASSOC = 8,
 	RTW_UNKNOWN,
 }rtw_connect_error_flag_t;
 
@@ -495,6 +523,15 @@ typedef enum {
 	RTW_TX_PWR_PERCENTAGE_25 = 3, /* 25% */
 	RTW_TX_PWR_PERCENTAGE_12_5 = 4, /* 12.5% */
 }rtw_tx_pwr_percentage_t;
+
+typedef enum {
+	RTW_TX_PWR_OFFSET_0_DB = 0, /* default target output power.	 */
+	RTW_TX_PWR_OFFSET_SUB_3_DB = 1, /* -3 dB */
+	RTW_TX_PWR_OFFSET_SUB_7_DB = 2, /* -7 dB */
+	RTW_TX_PWR_OFFSET_SUB_11_DB = 3, /* -11 dB */
+	RTW_TX_PWR_OFFSET_ADD_3_DB = 4, /* +3 dB */
+	RTW_TX_PWR_OFFSET_ADD_6_DB = 5, /* +6 dB */
+}rtw_tx_pwr_offset_t;
 
 /**
   * @brief  The enumeration is event type indicated from wlan driver.
@@ -516,6 +553,9 @@ typedef enum _WIFI_EVENT_INDICATE{
 	WIFI_EVENT_EAPOL_RECVD = 13,
 	WIFI_EVENT_NO_NETWORK = 14,
 	WIFI_EVENT_BEACON_AFTER_DHCP = 15,
+	WIFI_EVENT_IP_CHANGED = 16,
+	WIFI_EVENT_ICV_ERROR = 17,
+	WIFI_EVENT_CHALLENGE_FAIL = 18,
 	WIFI_EVENT_MAX,
 }rtw_event_indicate_t;
 #ifdef	__cplusplus

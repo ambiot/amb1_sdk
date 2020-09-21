@@ -195,7 +195,7 @@ _LONG_CALL_ u32 XTAL_ClkGet(void);
 /** @defgroup OSC_CLK_Exported_Functions OSC_CLK Exported Functions
   * @{
   */
-_LONG_CALL_ void OSC8M_Calibration(u32 LOG_EN, u32 CaliCycles, u32 TargetClock);
+_LONG_CALL_ u32 OSC8M_Calibration(u32 LOG_EN, u32 CaliCycles, u32 TargetClock);
 _LONG_CALL_ void OSC32K_Calibration(u32 LOG_EN, u32 CaliCycles);
 _LONG_CALL_ void OSC32K_Cmd(u32 NewStatus);
 _LONG_CALL_ u32 OSC8M_Get(void);
@@ -374,7 +374,7 @@ _LONG_CALL_ void XTAL2_Set(u32 BitMask, u32 NewState);
 #define BIT_SYS_OSC32K_RESISTOR_COM	(0x00000003 << 2) /*!< Compensate resistor control */
 #define BIT_SYS_OSC32K_CKE_8M			(0x00000001 << 4) /*!< 1: osc 8m clk is enabled */
 #define BIT_SYS_OSC32K_CKE_FREF		(0x00000001 << 5) /*!< 1: referece 25M clk is enabled */
-#define BIT_32K_BIAS_CURRENT			(0x0000FFFF << 16) /*! Bias current control */
+#define BIT_32K_BIAS_CURRENT(x)		(((x) & 0x0000FFFF) << 16) /*! Bias current control */
 /** @} */
 
 /**************************************************************************//**
@@ -408,6 +408,7 @@ _LONG_CALL_ void XTAL2_Set(u32 BitMask, u32 NewState);
 
 /* Other definations --------------------------------------------------------*/
 extern u32 NCO32K_Enable;
+extern u32 OSC8M_CLOCK_GLB;
 
 /**
   * @brief  Configures NCO 32K monitor function

@@ -22,7 +22,9 @@ int wext_get_ssid(const char *ifname, __u8 *ssid)
 	iwr.u.essid.length = 32;
 
 	if (iw_ioctl(ifname, SIOCGIWESSID, &iwr) < 0) {
+#if defined(CONFIG_EXAMPLE_BT_CONFIG) && (CONFIG_EXAMPLE_BT_CONFIG!=1)
 		printf("\n\rioctl[SIOCGIWESSID] ssid = NULL, not connected"); //do not use perror
+#endif
 		ret = -1;
 	} else {
 		ret = iwr.u.essid.length;
@@ -54,7 +56,7 @@ int wext_set_ssid(const char *ifname, const __u8 *ssid, __u16 ssid_len)
 		printf("\n\rioctl[SIOCSIWESSID] error");
 		ret = -1;
 	}
-	
+
 	return ret;
 }
 
@@ -116,6 +118,69 @@ int wext_set_auth_param(const char *ifname, __u16 idx, __u32 value)
 
 	return ret;
 }
+
+int wext_set_mfp_support(const char *ifname, __u8 value)
+{
+	int ret = 0;
+	struct iwreq iwr;
+
+	memset(&iwr, 0, sizeof(iwr));
+	iwr.u.param.value = value;
+
+	if (iw_ioctl(ifname, SIOCSIWMFP, &iwr) < 0) {
+		RTW_API_INFO(("\n\rWEXT: SIOCSIWMFP(value 0x%x) failed)", value));
+	}
+
+	return ret;
+}
+
+#ifdef CONFIG_SAE_SUPPORT
+int wext_set_group_id(const char *ifname, __u8 value)
+{
+	int ret = 0;
+	struct iwreq iwr;
+
+	memset(&iwr, 0, sizeof(iwr));
+	iwr.u.param.value = value;
+
+	if (iw_ioctl(ifname, SIOCSIWGRPID, &iwr) < 0) {
+		RTW_API_INFO(("\n\rWEXT: SIOCSIWGRPID(value 0x%x) failed)", value));
+	}
+
+	return ret;
+}
+
+extern u8 rtw_cmd_tsk_spt_wap3;
+
+int wext_set_support_wpa3(__u8 enable)
+{
+	rtw_cmd_tsk_spt_wap3 = enable;
+	return 0;
+}
+
+__u8 wext_get_support_wpa3(void)
+{
+	return rtw_cmd_tsk_spt_wap3;
+}
+
+#endif
+
+#ifdef CONFIG_PMKSA_CACHING
+int wext_set_pmk_cache_enable(const char *ifname, __u8 value)
+{
+	int ret = 0;
+	struct iwreq iwr;
+
+	memset(&iwr, 0, sizeof(iwr));
+	iwr.u.param.value = value;
+
+	if (iw_ioctl(ifname, SIOCSIWPMKSA, &iwr) < 0) {
+		RTW_API_INFO(("\n\rWEXT: SIOCSIWPMKSA(value 0x%x) failed)", value));
+	}
+
+	return ret;
+}
+#endif
 
 int wext_set_key_ext(const char *ifname, __u16 alg, const __u8 *addr, int key_idx, int set_tx, const __u8 *seq, __u16 seq_len, __u8 *key, __u16 key_len)
 {
@@ -202,7 +267,7 @@ int wext_get_enc_ext(const char *ifname, __u16 *alg, __u8 *key_idx, __u8 *passph
 
 	if(ext != NULL)
 		free(ext);
-	
+
 	return ret;
 }
 
@@ -220,7 +285,7 @@ int wext_set_passphrase(const char *ifname, const __u8 *passphrase, __u16 passph
 		printf("\n\rioctl[SIOCSIWESSID+0x1f] error");
 		ret = -1;
 	}
-	
+
 	return ret;
 }
 
@@ -240,7 +305,7 @@ int wext_get_passphrase(const char *ifname, __u8 *passphrase)
 		ret = iwr.u.passphrase.length;
 		passphrase[ret] = '\0';
 	}
-	
+
 	return ret;
 }
 
@@ -356,7 +421,7 @@ int wext_set_tdma_param(const char *ifname, __u8 slot_period, __u8 rfon_period_l
 
 	// Encode parameters as TLV (type, length, value) format
 	para = pvPortMalloc( 7 + (1+1+4) );
-	
+
 	snprintf((char*)para, cmd_len, "pm_set");
 	pindex = 7;
 
@@ -392,7 +457,7 @@ int wext_set_lps_dtim(const char *ifname, __u8 lps_dtim)
 
 	// Encode parameters as TLV (type, length, value) format
 	para = pvPortMalloc( 7 + (1+1+1) );
-	
+
 	snprintf((char*)para, cmd_len, "pm_set");
 	pindex = 7;
 
@@ -420,13 +485,13 @@ int wext_get_lps_dtim(const char *ifname, __u8 *lps_dtim)
 	__u16 pindex = 0;
 	__u8 *para = NULL;
 	int cmd_len = 0;
-	
+
 	memset(&iwr, 0, sizeof(iwr));
 	cmd_len = sizeof("pm_get");
 
 	// Encode parameters as TLV (type, length, value) format
 	para = pvPortMalloc( 7 + (1+1+1) );
-	
+
 	snprintf((char*)para, cmd_len, "pm_get");
 	pindex = 7;
 
@@ -536,7 +601,7 @@ int wext_set_txpower(const char *ifname, int poweridx)
 {
 	int ret = 0;
 	char buf[24];
-	
+
 	rtw_memset(buf, 0, sizeof(buf));
 	snprintf(buf, 24, "txpower patha=%d", poweridx);
 	ret = wext_private_command(ifname, buf, 0);
@@ -619,7 +684,7 @@ int wext_set_ap_ssid(const char *ifname, const __u8 *ssid, __u16 ssid_len)
 		printf("\n\rioctl[SIOCSIWPRIVAPESSID] error");
 		ret = -1;
 	}
-	
+
 	return ret;
 }
 
@@ -631,7 +696,7 @@ int wext_set_country(const char *ifname, rtw_country_code_t country_code)
 	memset(&iwr, 0, sizeof(iwr));
 
 	iwr.u.param.value = country_code;
-	
+
 	if (iw_ioctl(ifname, SIOCSIWPRIVCOUNTRY, &iwr) < 0) {
 		printf("\n\rioctl[SIOCSIWPRIVCOUNTRY] error");
 		ret = -1;
@@ -655,6 +720,38 @@ int wext_get_rssi(const char *ifname, int *rssi)
 	return ret;
 }
 
+int wext_get_bcn_rssi(const char *ifname, int *rssi)
+{
+	struct iwreq iwr;
+	int ret = 0;
+
+	memset(&iwr, 0, sizeof(iwr));
+
+	if (iw_ioctl(ifname, SIOCGIWBCNSENS, &iwr) < 0) {
+		printf("\n\rioctl[SIOCGIWBCNSENS] error");
+		ret = -1;
+	} else {
+		*rssi = 0 - iwr.u.bcnsens.value;
+	}
+	return ret;
+}
+
+int wext_get_snr(const char *ifname, int *snr)
+{
+	struct iwreq iwr;
+	int ret = 0;
+
+	memset(&iwr, 0, sizeof(iwr));
+
+	if (iw_ioctl(ifname, SIOCGIWSNR, &iwr) < 0) {
+		printf("\n\rioctl[SIOCGIWSNR] error");
+		ret = -1;
+	} else {
+		*snr = iwr.u.snr.value;
+	}
+	return ret;
+}
+
 int wext_set_pscan_channel(const char *ifname, __u8 *ch, __u8 *pscan_config, __u8 length)
 {
 	struct iwreq iwr;
@@ -673,9 +770,9 @@ int wext_set_pscan_channel(const char *ifname, __u8 *ch, __u8 *pscan_config, __u
 	*(para+12) = length;
 	for(i = 0; i < length; i++){
 		*(para + 13 + i)= *(ch + i);
-		*((__u16*) (para + 13 + length + i))= *(pscan_config + i);
+		*(para + 13 + length + i)= *(pscan_config + i);
 	}
-	
+
 	iwr.u.data.pointer = para;
 	iwr.u.data.length = (length + length + 1) + 12;
 	if (iw_ioctl(ifname, SIOCDEVPRIVATE, &iwr) < 0) {
@@ -750,7 +847,7 @@ int wext_set_scan(const char *ifname, char *buf, __u16 buf_len, __u16 flags)
 	int ret = 0;
 
 	memset(&iwr, 0, sizeof(iwr));
-#if 0 //for scan_with_ssid	
+#if 0 //for scan_with_ssid
 	if(buf)
 		memset(buf, 0, buf_len);
 #endif
@@ -784,7 +881,7 @@ int wext_private_command_with_retval(const char *ifname, char *cmd, char *ret_bu
 	struct iwreq iwr;
 	int ret = 0, buf_size;
 	char *buf;
-	
+
 	buf_size = 128;
 	if(strlen(cmd) >= buf_size)
 		buf_size = strlen(cmd) + 1;	// 1 : '\0'
@@ -829,7 +926,7 @@ int wext_private_command(const char *ifname, char *cmd, int show_msg)
 		buf_size = 2600;//2600 for config_get rmap,0,512 (or realmap)
 	else
 		buf_size = 512;
-    
+
 
 
 	if(strlen(cmd) >= buf_size)
@@ -868,10 +965,10 @@ void wext_wlan_indicate(unsigned int cmd, union iwreq_data *wrqu, char *extra)
 			if(wrqu->ap_addr.sa_family == ARPHRD_ETHER)
 			{
 				if(!memcmp(wrqu->ap_addr.sa_data, null_mac, sizeof(null_mac)))
-					wifi_indication(WIFI_EVENT_DISCONNECT, NULL, 0, 0);
-				else				
+					wifi_indication(WIFI_EVENT_DISCONNECT, wrqu->ap_addr.sa_data, sizeof(null_mac)+ 2, 0);
+				else
 					wifi_indication(WIFI_EVENT_CONNECT, wrqu->ap_addr.sa_data, sizeof(null_mac), 0);
-			}			
+			}
 			break;
 
 		case IWEVCUSTOM:
@@ -883,6 +980,10 @@ void wext_wlan_indicate(unsigned int cmd, union iwreq_data *wrqu, char *extra)
 					wifi_indication(WIFI_EVENT_RECONNECTION_FAIL, extra, strlen(IW_EXT_STR_RECONNECTION_FAIL), 0);
 				else if(!memcmp(IW_EVT_STR_NO_NETWORK, extra, strlen(IW_EVT_STR_NO_NETWORK)))
 					wifi_indication(WIFI_EVENT_NO_NETWORK, extra, strlen(IW_EVT_STR_NO_NETWORK), 0);
+				else if(!memcmp(IW_EVT_STR_ICV_ERROR, extra, strlen(IW_EVT_STR_ICV_ERROR)))
+					wifi_indication(WIFI_EVENT_ICV_ERROR, extra, strlen(IW_EVT_STR_ICV_ERROR), 0);
+				else if(!memcmp(IW_EVT_STR_CHALLENGE_FAIL, extra, strlen(IW_EVT_STR_CHALLENGE_FAIL)))
+					wifi_indication(WIFI_EVENT_CHALLENGE_FAIL, extra, strlen(IW_EVT_STR_CHALLENGE_FAIL), 0);
 #if CONFIG_ENABLE_P2P || defined(CONFIG_AP_MODE)
 				else if(!memcmp(IW_EVT_STR_STA_ASSOC, extra, strlen(IW_EVT_STR_STA_ASSOC)))
 					wifi_indication(WIFI_EVENT_STA_ASSOC, wrqu->data.pointer, wrqu->data.length, 0);
@@ -890,7 +991,7 @@ void wext_wlan_indicate(unsigned int cmd, union iwreq_data *wrqu, char *extra)
 					wifi_indication(WIFI_EVENT_STA_DISASSOC, wrqu->addr.sa_data, sizeof(null_mac), 0);
 				else if(!memcmp(IW_EVT_STR_SEND_ACTION_DONE, extra, strlen(IW_EVT_STR_SEND_ACTION_DONE)))
 					wifi_indication(WIFI_EVENT_SEND_ACTION_DONE, NULL, 0, wrqu->data.flags);
-#endif				
+#endif
 			}
 			break;
 		case SIOCGIWSCAN:
@@ -916,7 +1017,7 @@ void wext_wlan_indicate(unsigned int cmd, union iwreq_data *wrqu, char *extra)
 			break;
 
 	}
-	
+
 }
 
 
@@ -928,7 +1029,7 @@ int wext_send_eapol(const char *ifname, char *buf, __u16 buf_len, __u16 flags)
 	memset(&iwr, 0, sizeof(iwr));
 	iwr.u.data.pointer = buf;
 	iwr.u.data.length = buf_len;
-	iwr.u.data.flags = flags;	
+	iwr.u.data.flags = flags;
 	if (iw_ioctl(ifname, SIOCSIWEAPOLSEND, &iwr) < 0) {
 		printf("\n\rioctl[SIOCSIWEAPOLSEND] error");
 		ret = -1;
@@ -944,7 +1045,7 @@ int wext_send_mgnt(const char *ifname, char *buf, __u16 buf_len, __u16 flags)
 	memset(&iwr, 0, sizeof(iwr));
 	iwr.u.data.pointer = buf;
 	iwr.u.data.length = buf_len;
-	iwr.u.data.flags = flags;	
+	iwr.u.data.flags = flags;
 	if (iw_ioctl(ifname, SIOCSIWMGNTSEND, &iwr) < 0) {
 		printf("\n\rioctl[SIOCSIWMGNTSEND] error");
 		ret = -1;
@@ -960,7 +1061,7 @@ int wext_set_gen_ie(const char *ifname, char *buf, __u16 buf_len, __u16 flags)
 	memset(&iwr, 0, sizeof(iwr));
 	iwr.u.data.pointer = buf;
 	iwr.u.data.length = buf_len;
-	iwr.u.data.flags = flags;	
+	iwr.u.data.flags = flags;
 	if (iw_ioctl(ifname, SIOCSIWGENIE, &iwr) < 0) {
 		printf("\n\rioctl[SIOCSIWGENIE] error");
 		ret = -1;
@@ -986,7 +1087,7 @@ int wext_set_autoreconnect(const char *ifname, __u8 mode, __u8 retry_times, __u1
 	*(para+cmd_len) = mode;	//para1
 	*(para+cmd_len+1) = retry_times; //para2
 	*(para+cmd_len+2) = timeout; //para3
-	
+
 	iwr.u.data.pointer = para;
 	iwr.u.data.length = (4) + cmd_len;
 	if (iw_ioctl(ifname, SIOCDEVPRIVATE, &iwr) < 0) {
@@ -1010,7 +1111,7 @@ int wext_get_autoreconnect(const char *ifname, __u8 *mode)
 	//Cmd
 	snprintf((char*)para, cmd_len, "GetAutoRecnt");
 	//length
-	
+
 	iwr.u.data.pointer = para;
 	iwr.u.data.length = cmd_len;
 	if (iw_ioctl(ifname, SIOCDEVPRIVATE, &iwr) < 0) {
@@ -1117,7 +1218,7 @@ int wext_del_custom_ie(const char *ifname)
 	para = pvPortMalloc(cmd_len);//size:addr len+cmd_len
 	//Cmd
 	snprintf(para, cmd_len, "DelIE");
-	
+
 	iwr.u.data.pointer = para;
 	iwr.u.data.length = cmd_len;
 	if (iw_ioctl(ifname, SIOCDEVPRIVATE, &iwr) < 0) {
@@ -1220,7 +1321,7 @@ int wext_set_adaptivity(rtw_adaptivity_mode_t adaptivity_mode)
 		case RTW_ADAPTIVITY_CARRIER_SENSE:
 			rtw_adaptivity_en = 1; // enable adaptivity
 			rtw_adaptivity_mode = RTW_ADAPTIVITY_MODE_CARRIER_SENSE;
-			break;		
+			break;
 		case RTW_ADAPTIVITY_DISABLE:
 		default:
 			rtw_adaptivity_en = 0; //disable adaptivity
@@ -1235,6 +1336,40 @@ int wext_set_adaptivity_th_l2h_ini(__u8 l2h_threshold)
 	rtw_adaptivity_th_l2h_ini = (__s8)l2h_threshold;
 	return 0;
 }
+
+int wext_set_trp_tis(__u8 enable)
+{
+	extern u8 rtw_tx_pwr_lmt_enable;
+	extern u8 rtw_tx_pwr_by_rate;
+	extern u8 rtw_trp_tis_test_en;
+
+	if(enable == ENABLE){
+		//close the tx power limit and pwr by rate incase the efficiency of Antenna is not good enough.
+		rtw_tx_pwr_lmt_enable = 2;//set 0 to disable, set 2 to use efuse value
+		rtw_tx_pwr_by_rate = 2;//set 0 to disable, set 2 to use efuse value
+		//disable some dynamic mechanism
+		rtw_trp_tis_test_en = 1;
+		//you can change autoreconnct mode to RTW_AUTORECONNECT_INFINITE in init_thread function
+	}
+}
+
+#if defined(CONFIG_WLAN_LOW_PW)
+extern void rtw_enable_wlan_low_pwr_mode(WLAN_LOW_PW_MODE mode);
+void wext_set_low_power_mode(__u8 enable)
+{
+	extern WLAN_LOW_PW_MODE rtw_wlan_low_pw_mode;
+	extern int rtw_wlan_low_pw_mode4_c1;
+	extern int rtw_wlan_low_pw_mode4_c2;
+	extern int rtw_reduce_pa_gain;
+	if(enable == ENABLE){
+		rtw_wlan_low_pw_mode = PW_MODE_1|PW_MODE_2|PW_MODE_3|PW_MODE_4|PW_MODE_6;
+		rtw_wlan_low_pw_mode4_c1 = 24;
+		rtw_wlan_low_pw_mode4_c2 = 16;
+		rtw_reduce_pa_gain = 1; //0:not reduce, 1:reduce 2, 2:reduce 3
+		rtw_enable_wlan_low_pwr_mode(rtw_wlan_low_pw_mode);
+	}
+}
+#endif
 
 int wext_get_auto_chl(const char *ifname, unsigned char *channel_set, unsigned char channel_num)
 {
@@ -1339,3 +1474,115 @@ void wext_set_indicate_mgnt(int enable)
 	rtw_set_indicate_mgnt(enable);
 	return;
 }
+
+void wext_set_sigstat_fast_enable(int enable)
+{
+    rtw_set_sigstat_fast_enable(enable);
+    return;
+}
+
+void wext_set_lowrssi_use_b(int enable,int rssi)
+{
+    rtw_set_lowrssi_use_b(enable,rssi);
+    return ;
+}
+#ifdef CONFIG_AP_MODE
+extern void rltk_stop_softap(const char *ifname);
+extern void rltk_suspend_softap(const char *ifname);
+extern void rltk_suspend_softap_beacon(const char *ifname);
+void wext_stop_softap(const char *ifname)
+{
+	rltk_stop_softap(ifname);
+}
+void wext_suspend_softap(const char *ifname)
+{
+	rltk_suspend_softap(ifname);
+}
+void wext_suspend_softap_beacon(const char *ifname)
+{
+	rltk_suspend_softap_beacon(ifname);
+}
+int wext_ap_switch_chl_and_inform(unsigned char new_channel)
+{
+	if(rtw_ap_switch_chl_and_inform(new_channel))
+		return RTW_SUCCESS;
+	else
+		return RTW_ERROR;
+}
+#endif
+
+extern int rltk_get_nhm_ratio_level(const char *ifname, __u32 * level);
+int wext_get_nhm_ratio_level(const char *ifname, __u32 *level)
+{
+	int ret = -1;
+
+	wext_disable_powersave(ifname);
+	ret = rltk_get_nhm_ratio_level(ifname, level);
+	wext_enable_powersave(ifname, 1, 1);
+	return ret;
+}
+
+extern int rltk_get_retry_drop_num(const char *ifname, rtw_fw_retry_drop_t * retry);
+int wext_get_retry_drop_num(const char *ifname, rtw_fw_retry_drop_t * retry)
+{
+	return rltk_get_retry_drop_num(ifname, retry);
+}
+
+extern int rltk_get_sw_trx_statistics(const char *ifname, rtw_net_device_stats_t *stats);
+int wext_get_sw_trx_statistics(const char *ifname, rtw_net_device_stats_t *stats)
+{
+	return rltk_get_sw_trx_statistics(ifname, stats);
+}
+
+#ifdef CONFIG_SYNCPKT
+int wext_set_syncpkt_da(const char *ifname, __u8 *da)
+{
+    struct iwreq iwr;
+    int ret = 0;
+
+    memset(&iwr, 0, sizeof(iwr));
+
+    iwr.u.data.pointer = da;
+    iwr.u.data.length= 6;
+
+    if (iw_ioctl(ifname, SIOCSIWSYNCDASET, &iwr) < 0) {
+        printf("\n\rioctl[SIOCSIWSYNCDASET] error");
+        ret = -1;
+    }
+    return ret;
+}
+
+int wext_send_syncpkt(const char *ifname, __u8 flag, __u8 pktnum, __u8 interval)
+{
+    struct iwreq iwr;
+    int ret = 0;
+
+    memset(&iwr, 0, sizeof(iwr));
+
+    iwr.u.param.flags = pktnum;
+    iwr.u.param.fixed = interval;
+    iwr.u.param.disabled = flag;
+    if (iw_ioctl(ifname, SIOCSIWSYNCSET, &iwr) < 0) {
+        printf("\n\rioctl[SIOCSIWSYNCSET] error");
+        ret = -1;
+    }
+    return ret;
+}
+
+int wext_disable_fw_ips(const char *ifname, __u8 enable)
+{
+    struct iwreq iwr;
+    int ret = 0;
+
+    memset(&iwr, 0, sizeof(iwr));
+
+    iwr.u.param.flags = enable;
+
+    if (iw_ioctl(ifname, SIOCSIWSYNCFWIPS, &iwr) < 0) {
+        printf("\n\rioctl[SIOCSIWSYNCFWIPS] error");
+        ret = -1;
+    }
+    return ret;
+}
+#endif
+

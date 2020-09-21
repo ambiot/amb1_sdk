@@ -809,11 +809,16 @@
         </option>
         <option>
           <name>IlinkUseExtraOptions</name>
-          <state>0</state>
+          <state>1</state>
         </option>
         <option>
           <name>IlinkExtraOptions</name>
-          <state>--pi_veneers</state>
+          <state>--redirect aes_80211_encrypt=ram_patch_aes_80211_encrypt</state>
+          <state>--redirect aes_80211_decrypt=ram_patch_aes_80211_decrypt</state>
+          <state>--redirect CalcMIC=ram_patch_rom_CalcMIC</state>
+          <state>--redirect CheckMIC=ram_patch_rom_CheckMIC</state>
+          <state>--redirect rom_psk_CalcGTK=ram_patch_rom_psk_CalcGTK</state>
+          <state>--redirect rom_psk_CalcPTK=ram_patch_rom_psk_CalcPTK</state>
         </option>
         <option>
           <name>IlinkLowLevelInterfaceSlave</name>

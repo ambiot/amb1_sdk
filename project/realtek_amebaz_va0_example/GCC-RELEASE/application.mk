@@ -423,6 +423,12 @@ CFLAGS += -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -g2 -w -O2 
 LFLAGS = 
 LFLAGS += -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -g --specs=nano.specs -nostartfiles -Wl,-Map=$(BIN_DIR)/application.map -Os -Wl,--gc-sections -Wl,--cref -Wl,--entry=Reset_Handler -Wl,--no-enum-size-warning -Wl,--no-wchar-size-warning
 LFLAGS += -Wl,-wrap,malloc -Wl,-wrap,free -Wl,-wrap,realloc
+LFLAGS += -Wl,-wrap,rom_psk_CalcGTK
+LFLAGS += -Wl,-wrap,rom_psk_CalcPTK
+LFLAGS += -Wl,-wrap,CalcMIC
+LFLAGS += -Wl,-wrap,CheckMIC
+LFLAGS += -Wl,-wrap,aes_80211_encrypt
+LFLAGS += -Wl,-wrap,aes_80211_decrypt
 
 
 LIBFLAGS =

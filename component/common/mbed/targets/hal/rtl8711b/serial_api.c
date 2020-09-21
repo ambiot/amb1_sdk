@@ -70,6 +70,9 @@ int stdio_uart_inited = 0;
 serial_t stdio_uart;
 #endif
 
+int uart1_inited = 0;
+int uart0_inited = 0;
+
 #ifdef UART_USE_GTIMER_TO
 static void uart_gtimer_deinit(void);
 #endif
@@ -129,8 +132,6 @@ uart_dmasend_complete(
 	/*disable UART TX DMA*/
 	UART_TXDMACmd(puart_adapter->UARTx, DISABLE);
 
-	GDMA_Cmd(GDMA_InitStruct->GDMA_Index, GDMA_InitStruct->GDMA_ChNum, DISABLE);
-	GDMA_ChnlFree(GDMA_InitStruct->GDMA_Index, GDMA_InitStruct->GDMA_ChNum);
 
 	UART_SetTxFlag(puart_adapter->UartIndex, 0);
 
@@ -138,6 +139,8 @@ uart_dmasend_complete(
 	if (NULL != puart_adapter->TxCompCallback) {
 		puart_adapter->TxCompCallback(puart_adapter->TxCompCbPara);
 	}
+	GDMA_Cmd(GDMA_InitStruct->GDMA_Index, GDMA_InitStruct->GDMA_ChNum, DISABLE);
+	GDMA_ChnlFree(GDMA_InitStruct->GDMA_Index, GDMA_InitStruct->GDMA_ChNum);
 	
 	return 0;
 }
@@ -334,11 +337,11 @@ uart_irqhandler(
 		DBG_PRINTF(MODULE_UART, LEVEL_ERROR, "Unknown Interrupt \n");
 	break;
 	}
-
 	return 0;
 }
 
 #ifdef UART_USE_GTIMER_TO
+int trans_less_than_four = 0;
 static void
 uart_gtimer_handle(
     IN  VOID        *Data
@@ -357,7 +360,7 @@ uart_gtimer_handle(
 		u32 data_in_fifo = UART_Readable(puart_adapter->UARTx);
 
 		/* have Rx some data */
-		if ((Current_Addr != (u32)(puart_adapter->pRxBuf)) || data_in_fifo) {
+		if ((Current_Addr != (u32)(puart_adapter->pRxBuf))) {
 			/* not increase for 5ms */
 			if (puart_adapter->last_dma_addr == Current_Addr) {
 				/* rx stop 5ms, packet complete */
@@ -374,9 +377,10 @@ uart_gtimer_handle(
 				puart_adapter->RxCount -= TransCnt;
 				puart_adapter->pRxBuf += TransCnt;
 				
+				trans_less_than_four = 0;
 				uart_dmarecv_complete(puart_adapter);
 				
-				GDMA_Cmd(GDMA_InitStruct->GDMA_Index, GDMA_InitStruct->GDMA_ChNum, DISABLE);
+				//GDMA_Cmd(GDMA_InitStruct->GDMA_Index, GDMA_InitStruct->GDMA_ChNum, DISABLE);
 	
 				//DBG_8195A("UART DMA TO RxCount: %d\n", puart_adapter->RxCount);
 			} else {
@@ -384,6 +388,21 @@ uart_gtimer_handle(
 			}
 		} else { /* rx not start */
 			puart_adapter->last_dma_addr = (u32)(puart_adapter->pRxBuf);
+			if(data_in_fifo) {	//DATA in FIFO less than src burst size(4 Bytes)
+				if(trans_less_than_four){
+					RTIM_Cmd(TIMx[UART_TIMER_ID], DISABLE);
+
+					TransCnt = UART_ReceiveDataTO(puart_adapter->UARTx, puart_adapter->pRxBuf,
+						puart_adapter->RxCount, 1);
+					puart_adapter->RxCount -= TransCnt;
+					puart_adapter->pRxBuf += TransCnt;
+					
+					trans_less_than_four = 0;
+					uart_dmarecv_complete(puart_adapter);
+				} else {
+					trans_less_than_four = 1;
+				}
+			}
 		}
 	}
 }
@@ -480,6 +499,10 @@ void serial_init(serial_t *obj, PinName tx, PinName rx)
 		memcpy(&stdio_uart, obj, sizeof(serial_t));
 	}
 #endif
+	if (uart_idx == 0)
+		uart0_inited = 1;
+	if (uart_idx == 1)
+		uart1_inited = 1;
 }
 
 /**
@@ -513,6 +536,11 @@ void serial_free(serial_t *obj)
 		serial_dma_en[obj->uart_idx] &= ~SERIAL_TX_DMA_EN;
 	}    
 #endif
+
+	if (obj->uart_idx == 0)
+		uart0_inited = 0;
+	if (obj->uart_idx == 1)
+		uart1_inited = 0;
 	// TODO: recovery Pin Mux
 
 }
@@ -539,8 +567,11 @@ void serial_baud(serial_t *obj, int baudrate)
 			UART_LPRxStructInit(&LPUART_InitStruct);
 			UART_LPRxInit(puart_adapter->UARTx, &LPUART_InitStruct);
 			UART_LPRxMonitorCmd(puart_adapter->UARTx, ENABLE);
-			UART_LPRxBaudSet(puart_adapter->UARTx, baudrate, OSC8M_CLOCK);
+			UART_LPRxBaudSet(puart_adapter->UARTx, baudrate, OSC8M_CLOCK_GLB);
 			UART_LPRxCmd(puart_adapter->UARTx, ENABLE);
+		}else{
+			UART_LPRxpathSet(puart_adapter->UARTx, DISABLE);
+			UART_LPRxIPClockSet(puart_adapter->UARTx, UART_RX_CLK_XTAL_40M);
 		}
 	}
 }
@@ -913,6 +944,66 @@ int32_t serial_send_stream (serial_t *obj, char *ptxbuf, uint32_t len)
   * @retval HAL_Status
   * @note this function is asynchronous API.
   */
+BOOL UART_RXGDMA_Init2(
+	u8 UartIndex,
+	GDMA_InitTypeDef *GDMA_InitStruct,
+	void *CallbackData,
+	IRQ_FUN CallbackFunc,
+	u8 *pRxBuf,
+	int RxCount
+	)
+{
+	u8 GdmaChnl;
+	
+	assert_param(GDMA_InitStruct != NULL);
+	
+	GdmaChnl = GDMA_ChnlAlloc(0, (IRQ_FUN)CallbackFunc, (u32)CallbackData, 12);//ACUT is 0x10, BCUT is 12
+	if (GdmaChnl == 0xFF) {
+		/* No Available DMA channel */
+		return _FALSE;
+	}
+	DBG_8195A("GDMAChnl rx 0x%x\r\n", GdmaChnl);
+
+	_memset((void *)GDMA_InitStruct, 0, sizeof(GDMA_InitTypeDef));
+
+	GDMA_InitStruct->GDMA_DIR      = TTFCPeriToMem;
+	GDMA_InitStruct->GDMA_ReloadSrc = 1;
+	GDMA_InitStruct->GDMA_SrcHandshakeInterface = UART_DEV_TABLE[UartIndex].Rx_HandshakeInterface;
+	GDMA_InitStruct->GDMA_SrcAddr = (u32)&UART_DEV_TABLE[UartIndex].UARTx->RB_THR;
+	GDMA_InitStruct->GDMA_Index   = 0;
+	GDMA_InitStruct->GDMA_ChNum       = GdmaChnl;
+	GDMA_InitStruct->GDMA_IsrType = (BlockType|TransferType|ErrType);
+	GDMA_InitStruct->GDMA_SrcMsize   = MsizeFour;
+	GDMA_InitStruct->GDMA_SrcDataWidth = TrWidthOneByte;
+	GDMA_InitStruct->GDMA_DstInc = IncType;
+	GDMA_InitStruct->GDMA_SrcInc = NoChange;
+
+	if (((u32)(pRxBuf) & 0x03)==0) {
+		/*  4-bytes aligned, move 4 bytes each DMA transaction */
+		GDMA_InitStruct->GDMA_DstMsize   = MsizeOne;
+		GDMA_InitStruct->GDMA_DstDataWidth = TrWidthFourBytes;
+	} else {
+		/*  move 1 byte each DMA transaction */
+		GDMA_InitStruct->GDMA_DstMsize   = MsizeFour;
+		GDMA_InitStruct->GDMA_DstDataWidth = TrWidthOneByte;
+	}
+	GDMA_InitStruct->GDMA_BlockSize = RxCount;
+	GDMA_InitStruct->GDMA_DstAddr = (u32)(pRxBuf);
+
+	assert_param(GDMA_InitStruct->GDMA_BlockSize < 4096);
+	
+	/* multi block close */
+	GDMA_InitStruct->MuliBlockCunt     = 0;
+	GDMA_InitStruct->GDMA_ReloadSrc = 0;
+	GDMA_InitStruct->MaxMuliBlock = 1;
+
+	GDMA_Init(GDMA_InitStruct->GDMA_Index, GDMA_InitStruct->GDMA_ChNum, GDMA_InitStruct);
+	GDMA_Cmd(GDMA_InitStruct->GDMA_Index, GDMA_InitStruct->GDMA_ChNum, ENABLE);
+	
+	return _TRUE;
+}
+
+
 int32_t serial_recv_stream_dma (serial_t *obj, char *prxbuf, uint32_t len)
 {
 	PMBED_UART_ADAPTER puart_adapter=&(uart_adapter[obj->uart_idx]);
@@ -945,9 +1036,11 @@ int32_t serial_recv_stream_dma (serial_t *obj, char *prxbuf, uint32_t len)
 	UART_RXDMAConfig(puart_adapter->UARTx, 4);
 	UART_RXDMACmd(puart_adapter->UARTx, ENABLE);
 
-	ret1 = UART_RXGDMA_Init(puart_adapter->UartIndex, &puart_adapter->UARTRxGdmaInitStruct,
+	ret1 = UART_RXGDMA_Init2(puart_adapter->UartIndex, &puart_adapter->UARTRxGdmaInitStruct,
 		puart_adapter, uart_dmarecv_irqhandler,
 		puart_adapter->pRxBuf, puart_adapter->RxCount);
+
+	//NVIC_SetPriority(GDMA_IrqNum[0][puart_adapter->UARTRxGdmaInitStruct.GDMA_ChNum], 12);	
 	
 	if ((serial_dma_en[obj->uart_idx] & SERIAL_RX_DMA_EN)==0) {
 		if(ret1 == _TRUE) {
@@ -973,6 +1066,66 @@ int32_t serial_recv_stream_dma (serial_t *obj, char *prxbuf, uint32_t len)
   * @retval HAL_Status
   * @note this function is asynchronous API.
   */
+BOOL UART_TXGDMA_Init2(
+	u8 UartIndex,
+	GDMA_InitTypeDef *GDMA_InitStruct,
+	void *CallbackData,
+	IRQ_FUN CallbackFunc,
+	u8 *pTxBuf,
+	int TxCount
+	)
+{
+	u8 GdmaChnl;
+	
+	assert_param(GDMA_InitStruct != NULL);
+	
+	GdmaChnl = GDMA_ChnlAlloc(0, (IRQ_FUN)CallbackFunc, (u32)CallbackData, 10);//ACUT is 0x10, BCUT is 12
+	if (GdmaChnl == 0xFF) {
+		/*  No Available DMA channel */
+		return _FALSE;
+	}	
+
+	DBG_8195A("GDMAChnl tx 0x%x\r\n", GdmaChnl);
+
+	_memset((void *)GDMA_InitStruct, 0, sizeof(GDMA_InitTypeDef));
+	
+	GDMA_InitStruct->MuliBlockCunt     = 0;
+	GDMA_InitStruct->MaxMuliBlock      = 1;
+	
+	GDMA_InitStruct->GDMA_DIR      = TTFCMemToPeri;
+	GDMA_InitStruct->GDMA_DstHandshakeInterface   = UART_DEV_TABLE[UartIndex].Tx_HandshakeInterface;
+	GDMA_InitStruct->GDMA_DstAddr = (u32)&UART_DEV_TABLE[UartIndex].UARTx->RB_THR;
+	GDMA_InitStruct->GDMA_Index   = 0;
+	GDMA_InitStruct->GDMA_ChNum       = GdmaChnl;
+	GDMA_InitStruct->GDMA_IsrType = (BlockType|TransferType|ErrType);
+
+	GDMA_InitStruct->GDMA_DstMsize  = MsizeFour;
+	GDMA_InitStruct->GDMA_DstDataWidth = TrWidthOneByte;
+	GDMA_InitStruct->GDMA_DstInc = NoChange;
+	GDMA_InitStruct->GDMA_SrcInc = IncType;
+
+	if (((TxCount & 0x03)==0) && (((u32)(pTxBuf) & 0x03)==0)) {
+		/* 4-bytes aligned, move 4 bytes each transfer */
+		GDMA_InitStruct->GDMA_SrcMsize   = MsizeOne;
+		GDMA_InitStruct->GDMA_SrcDataWidth = TrWidthFourBytes;
+		GDMA_InitStruct->GDMA_BlockSize = TxCount >> 2;
+	} else {
+		/* move 1 byte each transfer */
+		GDMA_InitStruct->GDMA_SrcMsize   = MsizeFour;
+		GDMA_InitStruct->GDMA_SrcDataWidth = TrWidthOneByte;
+		GDMA_InitStruct->GDMA_BlockSize = TxCount;
+	}
+
+	assert_param(GDMA_InitStruct->GDMA_BlockSize < 4096);
+	
+	GDMA_InitStruct->GDMA_SrcAddr = (u32)(pTxBuf);
+
+	GDMA_Init(GDMA_InitStruct->GDMA_Index, GDMA_InitStruct->GDMA_ChNum, GDMA_InitStruct);
+	GDMA_Cmd(GDMA_InitStruct->GDMA_Index, GDMA_InitStruct->GDMA_ChNum, ENABLE);
+	
+	return _TRUE;
+}
+
 int32_t serial_send_stream_dma (serial_t *obj, char *ptxbuf, uint32_t len)
 {
 	PMBED_UART_ADAPTER puart_adapter=&(uart_adapter[obj->uart_idx]);
@@ -1000,9 +1153,12 @@ int32_t serial_send_stream_dma (serial_t *obj, char *ptxbuf, uint32_t len)
 	UART_TXDMAConfig(puart_adapter->UARTx, 8);
 	UART_TXDMACmd(puart_adapter->UARTx, ENABLE);
 
-	ret1 = UART_TXGDMA_Init(puart_adapter->UartIndex, &puart_adapter->UARTTxGdmaInitStruct,
+
+	ret1 = UART_TXGDMA_Init2(puart_adapter->UartIndex, &puart_adapter->UARTTxGdmaInitStruct,
 		puart_adapter, uart_dmasend_complete,
 		puart_adapter->pTxBuf, puart_adapter->TxCount);
+
+	//NVIC_SetPriority(GDMA_IrqNum[0][puart_adapter->UARTTxGdmaInitStruct.GDMA_ChNum], 12);	
 
 	if ((serial_dma_en[obj->uart_idx] & SERIAL_TX_DMA_EN)==0) {
 		if(ret1 == _TRUE) {

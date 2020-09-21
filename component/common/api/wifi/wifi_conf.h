@@ -4,7 +4,7 @@
   * @file    wifi_conf.h
   * @author
   * @version
-  * @brief   This file provides user interface for Wi-Fi station and AP mode configuration 
+  * @brief   This file provides user interface for Wi-Fi station and AP mode configuration
   *             base on the functionalities provided by Realtek Wi-Fi driver.
   ******************************************************************************
   * @attention
@@ -13,7 +13,7 @@
   * possession or use of this module requires written permission of RealTek.
   *
   * Copyright(c) 2016, Realtek Semiconductor Corporation. All rights reserved.
-  ****************************************************************************** 
+  ******************************************************************************
   */
 #ifndef __WIFI_API_H
 #define __WIFI_API_H
@@ -25,10 +25,10 @@
  */
 
 #include "FreeRTOS.h"
-#include "wifi_constants.h"   
-#include "wifi_structures.h"  
-#include "wifi_util.h"    
-#include "wifi_ind.h"    
+#include "wifi_constants.h"
+#include "wifi_structures.h"
+#include "wifi_util.h"
+#include "wifi_ind.h"
 #include <platform/platform_stdlib.h>
 
 #ifdef __cplusplus
@@ -219,11 +219,11 @@ int wifi_is_up(rtw_interface_t interface);
 
 /** Determines if a particular interface is ready to transceive ethernet packets
  *
- * @param     Radio interface to check, options are 
+ * @param     Radio interface to check, options are
  *  				RTW_STA_INTERFACE, RTW_AP_INTERFACE
- * @return    RTW_SUCCESS  : if the interface is ready to 
+ * @return    RTW_SUCCESS  : if the interface is ready to
  *  		  transceive ethernet packets
- * @return    RTW_NOTFOUND : no AP with a matching SSID was 
+ * @return    RTW_NOTFOUND : no AP with a matching SSID was
  *  		  found
  * @return    RTW_NOT_AUTHENTICATED: a matching AP was found but
  *  								   it won't let you
@@ -231,11 +231,11 @@ int wifi_is_up(rtw_interface_t interface);
  *  								   occur if this device is
  *  								   in the block list on the
  *  								   AP.
- * @return    RTW_NOT_KEYED: the device has authenticated and 
+ * @return    RTW_NOT_KEYED: the device has authenticated and
  *  						   associated but has not completed
  *  						   the key exchange. This can occur
  *  						   if the passphrase is incorrect.
- * @return    RTW_ERROR    : if the interface is not ready to 
+ * @return    RTW_ERROR    : if the interface is not ready to
  *  		  transceive ethernet packets
  */
 int wifi_is_ready_to_transceive(rtw_interface_t interface);
@@ -296,6 +296,14 @@ int wifi_set_txpower(int poweridx);
 int wifi_get_associated_client_list(void * client_list_buffer, unsigned short buffer_length);
 
 /**
+ *@brief Get connected AP's BSSID
+ * @param[out] bssid : the location where the AP BSSID will be stored
+ * @return RTW_SUCCESS : if result was successfully get
+ * @return RTW_ERROR : if result was not successfully get
+ */
+int wifi_get_ap_bssid(unsigned char *bssid);
+
+/**
  * @brief  Get the SoftAP information.
  * @param[out]  ap_info: The location where the AP info will be stored.
  * @param[out]  security: The security type.
@@ -313,12 +321,29 @@ int wifi_get_ap_info(rtw_bss_info_t * ap_info, rtw_security_t* security);
 int wifi_set_country(rtw_country_code_t country_code);
 
 /**
+ * @brief  retrieved sta mode MAX data rate.
+ * @param[out]  inidata_rate: MAX data rate.
+ * @return  RTW_SUCCESS: If the INIDATA_RATE is successfully retrieved.
+ * @return  RTW_ERROR: If the INIDATA_RATE is not retrieved.
+ * note: inidata_rate = 2 * (data rate), you need inidata_rate/2.0 to get the real rate
+ */
+int wifi_get_sta_max_data_rate(u8 * inidata_rate);
+
+/**
  * @brief  Retrieve the latest RSSI value.
  * @param[out]  pRSSI: Points to the integer to store the RSSI value gotten from driver.
  * @return  RTW_SUCCESS: If the RSSI is succesfully retrieved.
  * @return  RTW_ERROR: If the RSSI is not retrieved.
  */
 int wifi_get_rssi(int *pRSSI);
+
+/**
+ * @brief  Retrieve the latest SNR value.
+ * @param[out]  pRSSI: Points to the integer to store the SNR value gotten from driver.
+ * @return  RTW_SUCCESS: If the SNR is succesfully retrieved.
+ * @return  RTW_ERROR: If the SNR is not retrieved.
+ */
+int wifi_get_snr(int *pSNR);
 
 /**
  * @brief  Set the listening channel for promiscuous mode.
@@ -331,7 +356,7 @@ int wifi_set_channel(int channel);
 
 /**
  * @brief  Get the current channel on STA interface.
- * @param[out] channel: A pointer to the variable where the 
+ * @param[out] channel: A pointer to the variable where the
  *  				channel value will be written
  * @return  RTW_SUCCESS: If the channel is successfully read.
  * @return  RTW_ERROR: If the channel is not successfully read.
@@ -349,7 +374,7 @@ int wifi_get_channel(int *channel);
  */
 int wifi_register_multicast_address(rtw_mac_t *mac);
 
-/** 
+/**
  * @brief  Unregister interest in a multicast address.\n
  * 		Once a multicast address has been unregistered, all packets detected on the
  * 		medium destined for that address are ignored.
@@ -406,12 +431,23 @@ int wifi_on(rtw_mode_t mode);
 
 /**
  * @brief  Disable Wi-Fi.
- *  
+ *
  * @param  None
  * @return  RTW_SUCCESS: if deinitialization is successful.
  * @return  RTW_ERROR: otherwise.
  */
 int wifi_off(void);
+
+/**
+ * @brief  Switch Wifi Mode
+ *
+ * - Switch Wifi Mode to @param[in]
+ *
+ * @param[in]  mode: Decide to switch WiFi to which mode. The optional modes are RTW_MODE_STA or RTW_MODE_AP.
+ * @return  RTW_SUCCESS:    if the WiFi switch mode successful.
+ * @return  RTW_ERROR:      if the WiFi swithc mdoe not successful.
+ */
+int wifi_set_mode(rtw_mode_t mode);
 
 /**
  * Turn off the Wi-Fi device
@@ -420,7 +456,7 @@ int wifi_off(void);
  * - De-Initialises the driver thread which arbitrates access
  *   to the SDIO/SPI bus
  *
- * @return RTW_SUCCESS if deinitialization is successful, 
+ * @return RTW_SUCCESS if deinitialization is successful,
  *  	   RTW_ERROR otherwise
  */
 int wifi_off_fastly(void);
@@ -434,8 +470,17 @@ int wifi_off_fastly(void);
  * @return  RTW_SUCCESS if setting LPS mode successful.
  * @return  RTW_ERROR otherwise.
  */
- 
+
 int wifi_set_power_mode(unsigned char ips_mode, unsigned char lps_mode);
+
+/**
+ * @brief  Set LPS mode.
+ * @param[in] lps_mode: The desired LPS mode. It becomes effective when wlan enter lps.\n
+ *		@ref lps_mode is leisure power save mode. Wi-Fi automatically turns RF off during the association to AP is traffic is not busy while it also automatically turns RF on to listen to beacon. Set 1 to enable leisure power save mode.
+ * @return  RTW_SUCCESS if setting LPS mode successful.
+ * @return  RTW_ERROR otherwise.
+ */
+int wifi_set_powersave_level(u8 level);
 
 /**
  * Set TDMA parameters
@@ -475,11 +520,22 @@ int wifi_set_lps_dtim(unsigned char dtim);
 int wifi_get_lps_dtim(unsigned char *dtim);
 
 /**
+ * @brief  Set Management Frame Protection Support.
+ * @param[in] value:
+ *				- NO_MGMT_FRAME_PROTECTION 		- not support
+ *				- MGMT_FRAME_PROTECTION_OPTIONAL 	- capable
+ *				- MGMT_FRAME_PROTECTION_REQUIRED 	- required
+ * @return  RTW_SUCCESS if setting Management Frame Protection Support successful.
+ * @return  RTW_ERROR otherwise.
+ */
+int wifi_set_mfp_support(unsigned char value);
+
+/**
  * @brief  Trigger Wi-Fi driver to start an infrastructure Wi-Fi network.
  * @warning If a STA interface is active when this function is called, the softAP will
  *          start on the same channel as the STA. It will NOT use the channel provided!
  * @param[in]  ssid: A null terminated string containing the SSID name of the network.
- * @param[in]  security_type: 
+ * @param[in]  security_type:
  *                         - RTW_SECURITY_OPEN           - Open Security
  *                         - RTW_SECURITY_WPA_TKIP_PSK   - WPA Security
  *                         - RTW_SECURITY_WPA2_AES_PSK   - WPA2 Security using AES cipher
@@ -534,21 +590,21 @@ int wifi_start_ap_with_hidden_ssid(
 /**
  * @brief  Initiate a scan to search for 802.11 networks.
  *
- * @param[in]  scan_type: Specifies whether the scan should 
- *                             be Active, Passive or scan 
+ * @param[in]  scan_type: Specifies whether the scan should
+ *                             be Active, Passive or scan
  *                             Prohibited channels
- * @param[in]  bss_type: Specifies whether the scan should 
+ * @param[in]  bss_type: Specifies whether the scan should
  *                             search for Infrastructure
  *                             networks (those using an Access
  *                             Point), Ad-hoc networks, or both
  *                             types.
- * @param[in]  result_ptr: Scan specific ssid. The first 4 
+ * @param[in]  result_ptr: Scan specific ssid. The first 4
  *                             bytes is ssid lenth, and ssid name
  *                             append after it.
  *                             If no specific ssid need to scan,
  *                             PLEASE CLEAN result_ptr before pass
  *                             it into parameter.
- * @param[out]  result_ptr: a pointer to a pointer to a result 
+ * @param[out]  result_ptr: a pointer to a pointer to a result
  *                             storage structure.
  * @return  RTW_SUCCESS or RTW_ERROR
  * @note  The scan progressively accumulates results over time, and
@@ -556,7 +612,7 @@ int wifi_start_ap_with_hidden_ssid(
  *  			the scan will be individually provided to the callback
  *  			function. Note: The callback function will be executed in
  *  			the context of the RTW thread.
- * @note  When scanning specific channels, devices with a 
+ * @note  When scanning specific channels, devices with a
  *  	 strong signal strength on nearby channels may be
  *  	 detected
  */
@@ -570,12 +626,26 @@ int wifi_scan(rtw_scan_type_t                    scan_type,
  * @param[in]  results_handler: The callback function which will receive and process the result data.
  * @param[in]  user_data: User specified data that will be passed directly to the callback function.
  * @return  RTW_SUCCESS or RTW_ERROR
- * @note  Callback must not use blocking functions, since it is called from the context of the RTW thread. 
- *			The callback, user_data variables will be referenced after the function returns. 
+ * @note  Callback must not use blocking functions, since it is called from the context of the RTW thread.
+ *			The callback, user_data variables will be referenced after the function returns.
  *			Those variables must remain valid until the scan is completed.
  *			The usage of this api can reference ATWS in atcmd_wifi.c.
  */
 int wifi_scan_networks(rtw_scan_result_handler_t results_handler, void* user_data);
+
+/**
+ * @brief  Initiate a scan to search for 802.11 networks, a higher level API based on wifi_scan
+ *			to simplify the scan operation. This API separate full scan channel to partial scan
+ *			each channel for concurrent mode. MCC means Multi-channel concurrent.
+ * @param[in]  results_handler: The callback function which will receive and process the result data.
+ * @param[in]  user_data: User specified data that will be passed directly to the callback function.
+ * @return  RTW_SUCCESS or RTW_ERROR
+ * @note  Callback must not use blocking functions, since it is called from the context of the RTW thread.
+ *			The callback, user_data variables will be referenced after the function returns.
+ *			Those variables must remain valid until the scan is completed.
+ *			The usage of this api can reference ATWS in atcmd_wifi.c.
+ */
+int wifi_scan_networks_mcc(rtw_scan_result_handler_t results_handler, void* user_data);
 
 /**
  * @brief  Initiate a scan to search for 802.11 networks with specified SSID.
@@ -585,8 +655,8 @@ int wifi_scan_networks(rtw_scan_result_handler_t results_handler, void* user_dat
  * @param[in]  ssid: The SSID of target network.
  * @param[in]  ssid_len: The length of the target network SSID.
  * @return  RTW_SUCCESS or RTW_ERROR
- * @note  Callback must not use blocking functions, since it is called from the context of the RTW thread. 
- *			The callback, user_data variables will be referenced after the function returns. 
+ * @note  Callback must not use blocking functions, since it is called from the context of the RTW thread.
+ *			The callback, user_data variables will be referenced after the function returns.
  *			Those variables must remain valid until the scan is completed.
  */
 int wifi_scan_networks_with_ssid(int (results_handler)(char*, int, char *, void *), void* user_data, int scan_buflen, char* ssid, int ssid_len);
@@ -619,8 +689,8 @@ int wifi_get_setting(const char *ifname,rtw_wifi_setting_t *pSetting);
 int wifi_show_setting(const char *ifname,rtw_wifi_setting_t *pSetting);
 
 /**
- * @brief  
-Set the network mode according to the data rate its supported. 
+ * @brief
+Set the network mode according to the data rate its supported.
  *			Driver works in BGN mode in default after driver initialization. This function is used to
  *			change wireless network mode for station mode before connecting to AP.
  * @param[in]  mode: Network mode to set. The value can be RTW_NETWORK_B/RTW_NETWORK_BG/RTW_NETWORK_BGN.
@@ -629,12 +699,21 @@ Set the network mode according to the data rate its supported.
 int wifi_set_network_mode(rtw_network_mode_t mode);
 
 /**
+ * @brief	Get the network mode.
+ *			Driver works in BGN mode in default after driver initialization. This function is used to
+ *			get the current wireless network mode for station mode.
+ * @param[in]  pmode: Network mode to get.
+ * @return  RTW_SUCCESS or RTW_ERROR.
+ */
+int wifi_get_network_mode(rtw_network_mode_t *pmode);
+
+/**
  * @brief  Set the chip to start or stop the promiscuous mode.
  * @param[in]  enabled: enabled can be set 0, 1 and 2. if enabled is zero, disable the promisc, else enable the promisc.
  *                    - 0 means disable the promisc.
  *                    - 1 means enable the promisc.
  *                    - 2 means enable the promisc special for length is used.
- * @param[in]  callback: the callback function which will 
+ * @param[in]  callback: the callback function which will
  *  			  receive and process the netowork data.
  * @param[in]  len_used: specify if the the promisc length is used.
  *				If len_used set to 1, packet length will be saved and transferred to callback function.
@@ -652,7 +731,7 @@ int wifi_set_promisc(rtw_rcr_level_t enabled, void (*callback)(unsigned char*, u
 void wifi_enter_promisc_mode(void);
 
 /** Set the wps phase
- *  
+ *
  * @param is_trigger_wps[in]   : to trigger wps function or not
  *
  * @return    RTW_SUCCESS or RTW_ERROR
@@ -664,7 +743,7 @@ int wifi_set_wps_phase(unsigned char is_trigger_wps);
  * @warning If a STA interface is active when this function is called, the softAP will
  *          start on the same channel as the STA. It will NOT use the channel provided!
  * @param[in]  ssid: A null terminated string containing the SSID name of the network.
- * @param[in]  security_type: 
+ * @param[in]  security_type:
  *                         - RTW_SECURITY_OPEN           - Open Security
  *                         - RTW_SECURITY_WPA_TKIP_PSK   - WPA Security
  *                         - RTW_SECURITY_WPA2_AES_PSK   - WPA2 Security using AES cipher
@@ -694,7 +773,7 @@ int wifi_restart_ap(
  * @return  0 if success, otherwise return -1.
  * @note  Defining CONFIG_AUTO_RECONNECT in "autoconf.h" needs to be done before compiling,
  *			or this API won't be effective.
- * @note  The difference between @ref wifi_config_autoreconnect() and @ref wifi_set_autoreconnect() is that 
+ * @note  The difference between @ref wifi_config_autoreconnect() and @ref wifi_set_autoreconnect() is that
  *			user can specify the retry times and timeout value in @ref wifi_config_autoreconnect().
  *			But in @ref wifi_set_autoreconnect() these values are set with 3 retry limit and 5 seconds timeout as default.
  */
@@ -706,7 +785,7 @@ int wifi_config_autoreconnect(__u8 mode, __u8 retry_times, __u16 timeout);
   * @return  0 if success, otherwise return -1.
   * @note  Defining CONFIG_AUTO_RECONNECT in "autoconf.h" needs to be done before compiling,
   *			or this API won't be effective.
-  * @note  The difference between @ref wifi_config_autoreconnect() and @ref wifi_set_autoreconnect() is that 
+  * @note  The difference between @ref wifi_config_autoreconnect() and @ref wifi_set_autoreconnect() is that
   *			user can specify the retry times and timeout value in @ref wifi_config_autoreconnect().
   *			But in @ref wifi_set_autoreconnect() these values are set with 3 retry limit and 5 seconds timeout as default.
   */
@@ -842,6 +921,37 @@ int wifi_disable_packet_filter(unsigned char filter_id);
   * @return  0 if success, otherwise return -1.
   */
 int wifi_remove_packet_filter(unsigned char filter_id);
+
+/**
+  * @brief: Filter out the retransmission MIMO packet in promisc mode.
+  * @param[in]  enable: set 1 to enable filter retransmission pkt function, set 0 to disable this filter function.
+  * @param[in]  filter_interval_ms: if 'enable' equals 0, it's useless; if 'enable' equals 1, this value
+  *				indicate the time(ms) below which an adjacent pkt received will be claimed a retransmission pkt
+  *				if it has the same length with the previous pkt, and driver will drop all retransmission pkts.
+  *				For example, if the packet transmission time interval is 10ms, but driver receives two packets with
+  *				the same length within 3ms then the second packet will be dropped if configed as wifi_retransmit_packet_filter(1,3).
+  * @return 0 if success, otherwise return -1.
+  */
+int wifi_retransmit_packet_filter(u8 enable, u8 filter_interval_ms);
+
+/**
+  * @brief: Only receive the packets sent by the specified ap and phone in promisc mode.
+  * @param[in]  enable: set 1 to enable filter, set 0 to disable this filter function.
+  * @param[in]  ap_mac: if 'enable' equals 0, it's useless; if 'enable' equals 1, this value is the ap's mac address.
+  * @param[in]  phone_mac: if 'enable' equals 0, it's useless; if 'enable' equals 1, this value is the phone's mac address.
+  * @return  None.
+  * @note  Please invoke this function as "wifi_filter_by_ap_and_phone_mac(0,NULL,NULL)" before exiting promisc mode if you enabled it during the promisc mode.
+  */
+void wifi_filter_by_ap_and_phone_mac(u8 enable, void *ap_mac, void *phone_mac);
+
+/**
+  * @brief:	config to report ctrl packet or not under promisc mode.
+  * @param[in]	enable: set 1 to enable ctrl packet report, set 0 to disable ctrl packet report.
+  *
+  * @return	0 if success, otherwise return -1.
+  * @note this function can only be used under promisc mode, i.e. between wifi_set_promisc(enable,...,...) and wifi_set_promisc(disable,...,...)
+  */
+int wifi_promisc_ctrl_packet_rpt(u8 enable);
 #endif
 
 /**
@@ -855,17 +965,205 @@ int wifi_get_antenna_info(unsigned char *antenna);
 
 void wifi_set_indicate_mgnt(int enable);
 
-///@name Ameba1 Only 
+#ifdef CONFIG_SYNCPKT
+/*
+* set fwips enable or disable;
+* @param flag(1 or 0) if use the function or not
+* @return NULL
+*/
+void wifi_disable_fw_ips(u8 flag);
+/*
+* tell RCU's MAC Addr to driver
+* @param da RCU's MAC Addr if you don't use rcu, you can fill it with all F
+* @return 
+*/
+int wifi_set_syncpkt_da(u8 *da);
+/*
+* set cmd to enable sending sync pkt to RCU
+* wifi_send_syncpkt(u8 flag, u8 interval, u8 pktnum)
+*@param flag:set 1 to enable ,0 to disable
+*@param pktnum:how many sync pkt to send during one period
+*@param interval:time interval between 2 sync pkts,unit is ms
+*    period=100ms, RF ON time=interval*pktnum+10ms(10ms is used for beacon)
+*/
+int wifi_send_syncpkt(u8 flag, u8 pktnum, u8 interval);
+
+/*
+*   when you control the device with remote control working in wifi.You can use syncpkt function
+* to reduce the power of device.
+*   You should use the function like this.
+*   call some function in wifi_on.
+*
+*int wifi_on(rtw_mode_t mode)
+*{
+*    ...
+*    ...
+*#if CONFIG_INIC_EN
+*	inic_start();
+*#endif
+*    if(RTW_MODE_STA == mode)
+*    {
+*    	u8 da[6]={0x00, 0xe0, 0x4c, 0x83, 0x95, 0x23};//RCU's MAC Addr if you don't use rcu, you can keep it or fill 0xFF
+*        wifi_set_syncpkt_da(da);	//tell RCU's MAC Addr to driver
+*        wifi_send_syncpkt(1, 1, 40); // you can set pktnum to 1 and interval from 30 to 50 is about 80ma
+*    	wifi_disable_fw_ips(0);  // enable fwips so that can work well when disconnect
+*    }
+*	return ret;
+*}
+*   
+* And then you can receive pkt and test the function
+*/
+#endif
+
+/**
+ * @brief  set the RSSI change fast
+ * @param[out]  ENABLE AND DISABLE
+ * @return  NULL
+ */
+void wifi_set_sigstat_fast_enable(int enable);
+/*
+* set lowrssi use bg enable and set the rssi
+* @param enable if use the function or not
+* @param rssi when < rssi use bg mode else use bgn mode, default is -60,you¡®d better set it less than -60,e.g. -65, -70
+* @return NULL
+*/
+void wifi_set_lowrssi_use_b(int enable,int rssi);
+/**
+ * @brief  Get the information of MP driver
+ * @param[out]  ability : 0x1 stand for mp driver, and 0x0 stand for normal driver
+ * @return  RTW_SUCCESS
+ */
+
+int wifi_get_drv_ability(uint32_t *ability);
+
+/**
+ * @brief  Set channel plan into flash/efuse, must reboot after setting channel plan
+ * @param[in]  channel_plan : the value of channel plan, define in wifi_constants.h
+ * @return  RTW_SUCCESS or RTW_ERROR
+ */
+int wifi_set_channel_plan(uint8_t channel_plan);
+
+/**
+ * @brief  Get channel plan from calibration section
+ * @param[out]  channel_plan : point to the value of channel plan, define in wifi_constants.h
+ * @return  RTW_SUCCESS or RTW_ERROR
+ */
+int wifi_get_channel_plan(uint8_t *channel_plan);
+
+#ifdef CONFIG_AP_MODE
+/**
+ * @brief  Enable packets forwarding in ap mode
+ * @return  RTW_SUCCESS
+ */
+int wifi_enable_forwarding(void);
+
+/**
+ * @brief  Disable packets forwarding in ap mode
+ * @return  RTW_SUCCESS
+ */
+int wifi_disable_forwarding(void);
+#endif
+
+#ifdef CONFIG_CONCURRENT_MODE
+/**
+ * @brief  Set flag for concurrent mode wlan1 issue_deauth when channel switched by wlan0
+ *          usage: wifi_set_ch_deauth(0) -> wlan0 wifi_connect -> wifi_set_ch_deauth(1)
+ * @param[in]  enable : 0 for disable and 1 for enable
+ * @return  RTW_SUCCESS
+ */
+int wifi_set_ch_deauth(__u8 enable);
+#endif
+
+///@name Ameba1 Only
 ///@{
 /**
  * @brief enable AP sending QoS Null0 Data to poll Sta be alive
  * @param[in]  enabled: enabled can be set to 0,1.
  *			- 0	means enable.
- *			- 1	means disable.									
+ *			- 1	means disable.
  * @return  None
  */
 void wifi_set_ap_polling_sta(__u8 enabled);
 ///@}
+
+#ifdef CONFIG_CONCURRENT_MODE
+/**
+ * @brief  Concurrent mode wlan1 to suspend softap
+ * @param[in]  None
+ * @return  None
+ */
+void wifi_suspend_softap(void);
+/**
+ * @brief  Concurrent mode wlan1 to stop issueing beacon and processing rx packets
+ * @param[in]  None 
+ * @return  None
+ */
+void wifi_stop_softap(void);
+#endif
+
+/**
+ * @brief  Close private log in driver, including ssid /security /mac addr. Default is opened.
+ * @param[in]  None
+ * @return  None
+ */
+void wifi_close_private_log(void);
+/**
+ * @brief  Open private log in driver, including ssid /security /mac addr. Default is opened.
+ * @param[in]  None
+ * @return  None
+ */
+void wifi_open_private_log(void);
+
+/**
+ * @brief  Enable to check if network is 802.11n(11n only and bgn mixed)
+ * @param[in]  None
+ * @return  None
+ */
+void wifi_enable_check_80211n(void);
+
+/**
+ * @brief  Disable to check if network is 802.11n(11n only and bgn mixed)
+ * @param[in]  None
+ * @return  None
+ */
+void wifi_enable_check_80211n(void);
+
+/**
+ * @brief  Get NHM ratio level in driver.
+ * @param[out]  level: Points to the integer to store the level value gotten from driver.
+				level == 0: Very good environment
+				level == 1: good environment
+				level == 2: normal environment
+				level == 3: bad environment
+				level == 4: very bad environment
+ * @return  RTW_SUCCESS: If the level is succesfully retrieved.
+ * @return  RTW_ERROR: If the level is not retrieved. */
+int wifi_get_nhm_ratio_level(u32 *level);
+
+/**
+ * @brief  Get retry and drop packet num in firmware.
+ * @param[out]  retry: Points to the structure to store the retry and drop packet num value gotten from driver.
+ * @return  RTW_SUCCESS: If the value is succesfully retrieved.
+ * @return  RTW_ERROR: If the value is not retrieved.
+ */
+int wifi_get_retry_drop_num(rtw_fw_retry_drop_t * retry);
+
+/**
+ * @brief  Get tx and rx statistics in driver.
+ * @param[out]  stats: Points to the structure to store the trx statistics gotten from driver.
+ * @return  RTW_SUCCESS: If the value is succesfully retrieved.
+ * @return  RTW_ERROR: If the value is not retrieved.
+ */
+int wifi_get_sw_trx_statistics(rtw_net_device_stats_t *stats);
+
+/**
+ * @brief  Switch channel of softap and inform connected stations to keep wifi connection.
+ * @param[in]  new_channel: The channel number that softap will switch to.
+ * @return  RTW_SUCCESS: If switching channel is successful.
+ * @return  RTW_ERROR: If switching channel is failed.
+ */
+int wifi_ap_switch_chl_and_inform(unsigned char new_channel);
+
 #ifdef __cplusplus
   }
 #endif
