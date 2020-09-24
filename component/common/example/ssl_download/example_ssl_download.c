@@ -127,10 +127,10 @@ void example_ssl_download(void)
 
 #elif CONFIG_USE_MBEDTLS /* CONFIG_USE_POLARSSL */
 
-#include <mbedTLS/config.h>
-#include <mbedTLS/platform.h>
+#include <mbedtls/config.h>
+#include <mbedtls/platform.h>
 #include <mbedtls/net_sockets.h>
-#include <mbedTLS/ssl.h>
+#include <mbedtls/ssl.h>
 
 #define SERVER_HOST    "176.34.62.248"
 #define SERVER_PORT    "443"

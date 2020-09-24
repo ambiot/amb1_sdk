@@ -470,6 +470,7 @@ SRC_C += ../../../component/common/example/ssl_server/example_ssl_server.c
 SRC_C += ../../../component/common/example/tcp_keepalive/example_tcp_keepalive.c
 SRC_C += ../../../component/common/example/uart_atcmd/example_uart_atcmd.c
 SRC_C += ../../../component/common/example/uart_firmware_update/example_uart_update.c
+SRC_C += ../../../component/common/example/wifi_mac_monitor/example_wifi_mac_monitor.c
 SRC_C += ../../../component/common/example/wlan_fast_connect/example_wlan_fast_connect.c
 SRC_C += ../../../component/common/example/wlan_scenario/example_wlan_scenario.c
 SRC_C += ../../../component/common/example/websocket/example_wsclient.c
@@ -507,8 +508,8 @@ LFLAGS += -Wl,-wrap,aes_80211_encrypt
 LFLAGS += -Wl,-wrap,aes_80211_decrypt
 
 LIBFLAGS =
-all: LIBFLAGS += -L../../../component/soc/realtek/8195a/misc/bsp/lib/common/GCC/ -l_platform -l_wlan -l_http -l_dct -l_wps -l_rtlstd -l_websocket -l_xmodem -lm -lc -lnosys -lgcc -l_mdns
-mp: LIBFLAGS += -L../../../component/soc/realtek/8195a/misc/bsp/lib/common/GCC/ -l_platform -l_wlan_mp -l_wps -l_rtlstd -l_dct -l_websocket -l_xmodem -lm -lc -lnosys -lgcc -l_mdns
+all: LIBFLAGS += -L../../../component/soc/realtek/8195a/misc/bsp/lib/common/GCC/ -l_platform -l_wlan -l_http -l_dct -l_wps -l_p2p -l_rtlstd -l_websocket -l_xmodem -lm -lc -lnosys -lgcc -l_mdns
+mp: LIBFLAGS += -L../../../component/soc/realtek/8195a/misc/bsp/lib/common/GCC/ -l_platform -l_wlan_mp -l_wps -l_p2p -l_rtlstd -l_dct -l_websocket -l_xmodem -lm -lc -lnosys -lgcc -l_mdns
 
 RAMALL_BIN =
 OTA_BIN = 

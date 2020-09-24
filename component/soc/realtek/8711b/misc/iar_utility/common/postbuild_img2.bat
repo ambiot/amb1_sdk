@@ -22,17 +22,56 @@ for /f "delims=" %%i in ('cmd /c "%tooldir%\grep xip_image2 Debug/Exe/applicatio
 ::echo xip_image2_start: %xip_image2_start% >> tmp.txt
 ::echo xip_image2_end: %xip_image2_end% >> tmp.txt
 
-findstr /rg "place" Debug\List\application.map > tmp.txt
+
+@echo off&setlocal enabledelayedexpansion
+for /f "delims=:" %%i in ('findstr /n /c:"PLACEMENT" Debug\List\application.map') do (
+   set skipline=%%i
+)
+@echo off&setlocal enabledelayedexpansion
+for /f "delims=:" %%i in ('findstr /n /c:"Kind" Debug\List\application.map') do (
+    set endline=%%i
+)
+set /a line=endline-skipline
+
+@echo off&setlocal enabledelayedexpansion
+set n=0
+(for /f "skip=%skipline% delims=" %%a in (Debug\List\application.map) do (
+set /a n+=1
+if !n! leq %line% echo %%a
+))>application1.txt
+
+(for /f "delims=" %%a in (application1.txt) do (
+set /p="%%a"<nul | find /V "<Block>"
+))>application2.txt
+
+@echo off&setlocal enabledelayedexpansion
+set strstart={
+set strend=}
+set /a m=1
+(for /f "delims=" %%a in (application2.txt) do (
+set /p="%%a"<nul
+echo %%a | find "%strstart%" >nul && set /a m-=1
+echo %%a | find "%strend%" >nul && set /a m+=1
+if !m!==1 (echo.)
+))>application3.txt
+findstr /rg "place" application3.txt > tmp.txt
+
+del application1.txt
+del application2.txt
+del application3.txt
+
+
+::findstr /rg "place" Debug\List\application.map > tmp.txt
 setlocal enabledelayedexpansion
 for /f "delims=:" %%i in ('findstr /rg "0x1000" tmp.txt') do (
     set "var=%%i"
     set "sectname_ram2=!var:~1,2!"
 )
-for /f "delims=:" %%i in ('findstr /rg "xip_image2.text" tmp.txt') do (
+for /f "delims=:" %%i in ('findstr /rg /i "xip_image2.text 0x80f'ffff 0x080fffff" tmp.txt') do (
     set "var=%%i"
     set "sectname_xip=!var:~1,2!"
 )
-for /f "delims=:" %%i in ('findstr /rg "0x1003f000" tmp.txt') do (
+for /f "delims=:" %%i in ('findstr /rg /i "0x1003f000 0x1003'f000" tmp.txt') do (
     set "var=%%i"
     set "sectname_rdp=!var:~1,2!"
 )
@@ -44,6 +83,18 @@ del tmp.txt
 %tooldir%\objcopy -j "%sectname_xip% rw" -Obinary Debug/Exe/application.axf Debug/Exe/xip_image2.bin
 %tooldir%\objcopy -j "%sectname_rdp% rw" -Obinary Debug/Exe/application.axf Debug/Exe/rdp.bin
 
+set maxbytesize=0
+set file="Debug/Exe/ram_2.r.bin"
+
+FOR /F "usebackq" %%A IN ('%file%') DO set size=%%~zA
+
+::echo %size% > mark1.txt
+
+if %size% EQU %maxbytesize% (
+%tooldir%\objcopy -j "%sectname_ram2%" -Obinary Debug/Exe/application.axf Debug/Exe/ram_2.r.bin
+%tooldir%\objcopy -j "%sectname_xip%" -Obinary Debug/Exe/application.axf Debug/Exe/xip_image2.bin
+%tooldir%\objcopy -j "%sectname_rdp%" -Obinary Debug/Exe/application.axf Debug/Exe/rdp.bin
+)
 :: remove bss sections
 %tooldir%\pick %ram2_start% %ram2_end% Debug\Exe\ram_2.r.bin Debug\Exe\ram_2.bin raw
 del Debug\Exe\ram_2.r.bin

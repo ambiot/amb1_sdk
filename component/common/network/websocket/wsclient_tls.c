@@ -11,7 +11,7 @@ struct wss_tls{
 };
 
 #elif (WSCLIENT_USE_TLS == WSCLIENT_TLS_MBEDTLS)
-#include "mbedTLS/ssl.h"
+#include "mbedtls/ssl.h"
 #include "mbedtls/net_sockets.h"
 
 struct wss_tls{

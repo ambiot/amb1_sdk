@@ -3076,6 +3076,9 @@
       </excluded>
     </file>
     <file>
+      <name>$PROJ_DIR$\..\..\..\component\soc\realtek\8195a\misc\bsp\lib\common\IAR\lib_p2p.a</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\..\..\component\soc\realtek\8195a\misc\bsp\lib\common\IAR\lib_platform.a</name>
     </file>
     <file>
