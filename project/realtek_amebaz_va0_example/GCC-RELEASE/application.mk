@@ -152,6 +152,7 @@ SRC_C += ../../../component/soc/realtek/8711b/app/monitor/ram/rtl_trace.c
   
 #network api wifi rtw_wpa_supplicant
 SRC_C += ../../../component/common/api/wifi/rtw_wpa_supplicant/wpa_supplicant/wifi_eap_config.c
+SRC_C += ../../../component/common/api/wifi/rtw_wpa_supplicant/wpa_supplicant/wifi_p2p_config.c
 SRC_C += ../../../component/common/api/wifi/rtw_wpa_supplicant/wpa_supplicant/wifi_wps_config.c
           
         
@@ -432,8 +433,8 @@ LFLAGS += -Wl,-wrap,aes_80211_decrypt
 
 
 LIBFLAGS =
-all: LIBFLAGS += -L../../../component/soc/realtek/8711b/misc/bsp/lib/common/GCC/ -l_platform -l_wlan -l_wps -l_dct -l_rtlstd -lm -lc -lnosys -lgcc -l_websocket -l_http -l_mdns
-mp: LIBFLAGS += -L../../../component/soc/realtek/8711b/misc/bsp/lib/common/GCC/ -l_platform -l_wlan_mp -l_wps -l_dct -l_rtlstd -lm -lc -lnosys -lgcc -l_websocket -l_http -l_mdns
+all: LIBFLAGS += -L../../../component/soc/realtek/8711b/misc/bsp/lib/common/GCC/ -l_platform -l_wlan -l_wps -l_p2p -l_dct -l_rtlstd -lm -lc -lnosys -lgcc -l_websocket -l_http -l_mdns
+mp: LIBFLAGS += -L../../../component/soc/realtek/8711b/misc/bsp/lib/common/GCC/ -l_platform -l_wlan_mp -l_wps -l_p2p -l_dct -l_rtlstd -lm -lc -lnosys -lgcc -l_websocket -l_http -l_mdns
 
 RAMALL_BIN =
 OTA_BIN = 

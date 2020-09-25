@@ -30,8 +30,7 @@ static void example_wsclient_thread(void *param)
 	}
 
 	int ret;
-	//wsclient_context *wsclient = create_wsclient("wss://echo.websocket.org", 0, NULL, NULL);
-	wsclient_context *wsclient = create_wsclient("wss://sandbox.kaazing.net", 0, "echo", NULL);
+	wsclient_context *wsclient = create_wsclient("wss://echo.websocket.org", 0, NULL, NULL);
 	if(wsclient != NULL){
 
 		if(wsclient->use_ssl == 1){

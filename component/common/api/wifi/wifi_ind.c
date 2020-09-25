@@ -9,7 +9,7 @@
  ******************************************************/
 
 #define WIFI_INDICATE_MSG	0
-#define WIFI_MANAGER_STACKSIZE	1300
+#define WIFI_MANAGER_STACKSIZE	1500
 #define WIFI_MANAGER_PRIORITY		(0) //Actual priority is 4 since calling rtw_create_task
 #define WIFI_MANAGER_Q_SZ	8
 
