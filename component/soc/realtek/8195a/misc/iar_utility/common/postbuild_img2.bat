@@ -39,6 +39,20 @@ for /f %%i in ('cmd /c "%tooldir%\readelf -S %cfgdir%/Exe/application.axf | %too
 if defined %ram3_start (
 	%tooldir%\objcopy -j "%sectname_sdram% rw" -Obinary %cfgdir%/Exe/application.axf %cfgdir%/Exe/sdram.bin
 )
+
+set bytesize=0
+set file="Debug/Exe/ram_2.bin"
+FOR /F "usebackq" %%A IN ('%file%') DO set size=%%~zA
+
+::echo %size% > mark_01.txt
+
+if %size% EQU %bytesize% (
+%tooldir%\objcopy -j "%sectname_img2%" -Obinary %cfgdir%/Exe/application.axf %cfgdir%/Exe/ram_2.bin
+if defined %ram3_start (
+	%tooldir%\objcopy -j "%sectname_sdram%" -Obinary %cfgdir%/Exe/application.axf %cfgdir%/Exe/sdram.bin
+)
+)
+
 if defined %flash_run_start (
 	%tooldir%\objcopy -j "%sectname_flash% rw" -Obinary %cfgdir%/Exe/application.axf %cfgdir%/Exe/flash_run.bin
 ) else (

@@ -127,7 +127,8 @@ keep { section .image2.validate.rodata*, section .custom.validate.rodata* };
 define block .image2.start.table2 with fixed order{ section .image2.validate.rodata*, section .custom.validate.rodata* };
 
 define block SHT$$PREINIT_ARRAY { preinit_array };
-define block SHT$$INIT_ARRAY { init_array };
+define block __iar_tls$$INIT_ARRAY { init_array };
+define block SHT$$INIT_ARRAY { block __iar_tls$$INIT_ARRAY };
 define block CPP_INIT with alignment = 8, fixed order {        
                                                 block SHT$$PREINIT_ARRAY,
                                                 block SHT$$INIT_ARRAY 
@@ -206,13 +207,15 @@ place at start of SDRAM_RAM_region {
 
 
 /* TCM placement */
-define overlay TCM_overlay { 
+define block TCMBSS{
 									section .tcm.heap,
-                                    section .bss object mem.o,
-                                    section .bss object memp.o,
-                                    block .heap,
-                                    block .stack_dummy
-							};
+									section .bss object mem.o,
+									section .bss object memp.o,
+									block .heap,
+									block .stack_dummy
+};
+define overlay TCM_overlay { block TCMBSS };
+
 /* dummy code placement */
 define overlay TCM_overlay { block IMAGE1_DBG };
 place at start of TCM_region { 	overlay TCM_overlay }; 
