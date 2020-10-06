@@ -261,7 +261,7 @@ void cmd_p2p_connect(int argc, char **argv)
 		os_xqueue_delete(queue_for_p2p_nego);
 		queue_for_p2p_nego = NULL;
 
-		if((ret == 0) || (result == 0))
+		if((ret == 0) && (result == 0))
 			wifi_p2p_start_wps(res);
 	}
 }

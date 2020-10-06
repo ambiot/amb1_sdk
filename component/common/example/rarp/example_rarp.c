@@ -4,7 +4,7 @@
 #include "wifi_conf.h"
 
 
-#define RARP_THREAD_STACK_SIZE 200
+#define RARP_THREAD_STACK_SIZE 1024
 
 const struct eth_addr macbroadcast = {{0xff,0xff,0xff,0xff,0xff,0xff}};
 extern struct netif xnetif[NET_IF_NUM];
