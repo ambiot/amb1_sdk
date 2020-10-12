@@ -482,7 +482,7 @@ void restore_wifi_info_to_flash(uint32_t offer_ip, uint32_t server_ip)
 		}
 
 		memcpy(wifi_data_to_flash.psk_essid, psk_essid[index], sizeof(wifi_data_to_flash.psk_essid));
-		if (strlen((char const*)psk_passphrase64) == 64) {
+		if (strlen((char const*)psk_passphrase64) == 64 && (strlen(setting.password) == 64)) {
 			memcpy(wifi_data_to_flash.psk_passphrase, psk_passphrase64, sizeof(wifi_data_to_flash.psk_passphrase));
 		} else {
 			memcpy(wifi_data_to_flash.psk_passphrase, psk_passphrase[index], sizeof(wifi_data_to_flash.psk_passphrase));
