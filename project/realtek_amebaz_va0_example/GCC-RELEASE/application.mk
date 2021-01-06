@@ -432,6 +432,7 @@ LFLAGS += -Wl,-wrap,CalcMIC
 LFLAGS += -Wl,-wrap,CheckMIC
 LFLAGS += -Wl,-wrap,aes_80211_encrypt
 LFLAGS += -Wl,-wrap,aes_80211_decrypt
+LFLAGS += -Wl,-wrap,DecGTK
 
 
 LIBFLAGS =

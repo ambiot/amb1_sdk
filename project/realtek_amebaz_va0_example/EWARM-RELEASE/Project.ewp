@@ -819,6 +819,7 @@
           <state>--redirect CheckMIC=ram_patch_rom_CheckMIC</state>
           <state>--redirect rom_psk_CalcGTK=ram_patch_rom_psk_CalcGTK</state>
           <state>--redirect rom_psk_CalcPTK=ram_patch_rom_psk_CalcPTK</state>
+          <state>--redirect DecGTK=ram_patch_rom_DecGTK</state>
         </option>
         <option>
           <name>IlinkLowLevelInterfaceSlave</name>
