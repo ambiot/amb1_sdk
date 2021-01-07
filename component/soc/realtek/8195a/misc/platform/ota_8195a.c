@@ -322,6 +322,8 @@ static void update_ota_local_task(void *param)
 		goto update_ota_exit;
 	}
 
+	/* NOTE: Can add codes to check new firmware size based on flash size and flash layout to prevent flash overwrite or user data corruption */
+
 	// reset
 	file_checksum->u = 0;
 	// Write New Image 2 sector
@@ -729,6 +731,8 @@ int http_update_ota(char *host, int port, char *resource)
 		}
 		else
 			printf("\n\r[%s] Download new firmware begin, total size : %d\n\r", __FUNCTION__, rsp_result.body_len);
+
+		/* NOTE: Can add codes to check new firmware size based on flash size and flash layout to prevent flash overwrite or user data corruption */
 
 #if SWAP_UPDATE
 		NewImg2Addr = update_ota_swap_addr(rsp_result.body_len, NewImg2Addr);

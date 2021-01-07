@@ -992,6 +992,8 @@ static void ota_update_local_task(void *param)
 
 	printf("\n\r[%s] update addr:%x update len: %x", __FUNCTION__, NewImg2Addr, NewImg2Len);
 
+	/* NOTE: Can add codes to check new firmware size based on flash size and flash layout to prevent flash overwrite or user data corruption */
+
 	/* if OTA1 will be update, image size should not cross OTA2 */
 	if(NewImg2Addr == OTA1_ADDR) {
 		if(NewImg2Len > (OTA2_ADDR-OTA1_ADDR) ){	// firmware size too large
