@@ -442,7 +442,6 @@ DRAM_C += ../../../component/common/network/ssl/ssl_ram_map/ssl_ram_map.c
 SRC_C += ../../../component/common/utilities/cJSON.c
 SRC_C += ../../../component/common/utilities/http_client.c
 SRC_C += ../../../component/common/utilities/uart_socket.c
-SRC_C += ../../../component/common/utilities/webserver.c
 SRC_C += ../../../component/common/utilities/xml.c
 
 #utilities - example
