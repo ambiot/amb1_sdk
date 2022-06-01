@@ -123,8 +123,8 @@ extern uint32_t SystemCoreClock;
 #define portCONFIGURE_STATS_PEROID_VALUE	1000 //unit Ticks
 #endif
 
-#define configTIMER_TASK_PRIORITY       ( 1 )
-#define configTIMER_QUEUE_LENGTH        ( 10 )
+#define configTIMER_TASK_PRIORITY       ( configMAX_PRIORITIES - 1 )
+#define configTIMER_QUEUE_LENGTH        ( 10 + 32 )
 #define configTIMER_TASK_STACK_DEPTH    ( 512 )     //USE_MIN_STACK_SIZE modify from 512 to 256
 
 #if (__IASMARM__ != 1)
