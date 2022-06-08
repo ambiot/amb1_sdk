@@ -313,6 +313,9 @@ The STM32F2x7 allows computing and verifying the IP, UDP, TCP and ICMP checksums
 #define DNS_IGNORE_REPLY_ERR   1
 #endif /* DNS_IGNORE_REPLY_ERR */
 
+/* Added by Realtek. For DHCP server reply unicast DHCP packets before the ip actually assigned. */
+#define ETHARP_SUPPORT_STATIC_ENTRIES   1	  
+
 #endif /* __LWIPOPTS_H__ */
 
 /******************* (C) COPYRIGHT 2011 STMicroelectronics *****END OF FILE****/
