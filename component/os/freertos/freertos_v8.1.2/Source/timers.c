@@ -323,7 +323,7 @@ BaseType_t xReturn = pdFAIL;
 DaemonTaskMessage_t xMessage;
 
 	// Added by Realtek to prevent timer thread blocked
-	if( ( vTaskGetCurrentTCB() == ( void * ) xTimerTaskHandle ) && ( ( xCommandID == tmrCOMMAND_STOP ) || ( xCommandID == tmrCOMMAND_CHANGE_PERIOD ) || ( xCommandID == tmrCOMMAND_DELETE ) ) )
+	if( ( vTaskGetCurrentTCB() == ( void * ) xTimerTaskHandle ) && ( ( xCommandID == tmrCOMMAND_STOP ) || ( xCommandID == tmrCOMMAND_CHANGE_PERIOD ) ) )
 	{
 		prvProcessCommands( xTimer, xCommandID, xOptionalValue );
 		return pdPASS;
