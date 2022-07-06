@@ -86,7 +86,6 @@ void port_dir(port_t *obj, PinDirection dir)
   * @param  obj: gpio port object define in application software.
   * @param  mode: this parameter can be one of the following values:
   *		@arg PullNone: HighZ
-  *		@arg OpenDrain(is OpenDrain output): no pull + OUT + GPIO[gpio_bit] = 0  
   *		@arg PullDown: pull down
   *		@arg PullUp: pull up
   * @retval none  

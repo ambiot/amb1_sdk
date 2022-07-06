@@ -989,7 +989,8 @@ tcp_receive(struct tcp_pcb *pcb)
           }
           LWIP_DEBUGF(TCP_CWND_DEBUG, ("tcp_receive: slow start cwnd %"U16_F"\n", pcb->cwnd));
         } else {
-          u16_t new_cwnd = (pcb->cwnd + pcb->mss * pcb->mss / pcb->cwnd);
+          u32_t new_cwnd = (pcb->cwnd + pcb->mss * pcb->mss / pcb->cwnd);
+          new_cwnd = new_cwnd & 0xFFFF;
           if (new_cwnd > pcb->cwnd) {
             pcb->cwnd = new_cwnd;
           }

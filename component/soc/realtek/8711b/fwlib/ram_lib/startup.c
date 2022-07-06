@@ -12,7 +12,7 @@
 #include "strproc.h"
 #include "system_8195a.h"
 
-u32 random_seed;
+u32 random_seed = 0x0;
 
 #if defined ( __ICCARM__ )
 #pragma section=".ram_image2.bss"
@@ -35,19 +35,24 @@ void __iar_data_init_app(void)
 
 extern VOID SOCPS_WakeFromPG(VOID);
 
-#if defined ( __ICCARM__ )
+#if defined ( __ICCARM__ ) || defined(__GNUC__)
+IMAGE2_RAM_TEXT_SECTION
 VOID
-HalHardFaultHandler_user_define(u32 HardDefaultArg)
+HalHardFaultHandler_user_define(u32 HardDefaultArg, u32 lr)
 {
+#if CONFIG_EXAMPLE_CM_BACKTRACE
+	cm_backtrace_fault(HardDefaultArg, lr);
+#endif	
 }
-
+IMAGE2_RAM_TEXT_SECTION
 VOID
-HalHardFaultHandler_Patch_c(u32 HardDefaultArg)
+HalHardFaultHandler_Patch_c(u32 HardDefaultArg, u32 lr)
 {
-	HalHardFaultHandler_user_define(HardDefaultArg);
+	HalHardFaultHandler_user_define(HardDefaultArg, lr);
 	INT_HardFault(HardDefaultArg);
 }
 
+IMAGE2_RAM_TEXT_SECTION
 VOID
 HalHardFaultHandler_Patch_asm(void)
 {
@@ -55,6 +60,7 @@ HalHardFaultHandler_Patch_asm(void)
         "ITE EQ\n"
         "MRSEQ R0, MSP\n"
         "MRSNE R0, PSP\n"
+        "MOV R1, LR\n"
         "B HalHardFaultHandler_Patch_c");
 }
 #endif
@@ -66,7 +72,7 @@ VOID BOOT_VectorTableOverride(u32 StackP)
 	//4 Initial NMI 
 	//NewVectorTable[2] = (HAL_VECTOR_FUN)HalNMIHandler_Patch;
 
-#if 0//defined ( __ICCARM__ )
+#if 0//defined ( __ICCARM__ ) || defined(__GNUC__)
 	//Redefine Hardfault Handler
 	NewVectorTable[3] = (HAL_VECTOR_FUN)HalHardFaultHandler_Patch_asm;
 #endif
@@ -172,6 +178,8 @@ VOID BOOT_PlatformInit(VOID)
 VOID BOOT_Image2(VOID)
 {
 	int ret = 0;
+	u32 OSC8MCali = _SUCCESS;
+
 #ifdef CONFIG_FPGA
 	MPU->RNR = 0; //0xE000ED00, 0x98 MPU Region RNRber Register
 	MPU->RBAR = 0; //0xE000ED00, 0x9C MPU Region Base Address Register
@@ -209,16 +217,9 @@ VOID BOOT_Image2(VOID)
 
 	//BOOT_PlatformInit();
 
+	OSC8M_CLOCK_GLB = 8388608;
 #if (!defined(CONFIG_FPGA) && !defined(CONFIG_POST_SIM))
-#if defined(CONFIG_OSC8M_8388608HZ)
-	OSC8M_Calibration(DISABLE, OSC32K_CALI_32KCYC_064, OSC8M_8388608HZ);
-#elif defined(CONFIG_OSC8M_8192000HZ)
-	OSC8M_Calibration(DISABLE, OSC32K_CALI_32KCYC_064, OSC8M_8192000HZ);
-#elif defined(CONFIG_OSC8M_8000000HZ)
-	OSC8M_Calibration(DISABLE, OSC32K_CALI_32KCYC_064, OSC8M_8000000HZ);
-#elif defined(CONFIG_OSC8M_16777216HZ)
-	OSC8M_Calibration(DISABLE, OSC32K_CALI_32KCYC_064, OSC8M_16777216HZ);
-#endif
+	OSC8MCali = OSC8M_Calibration(DISABLE, OSC32K_CALI_32KCYC_064, OSC8M_8388608HZ);
 	DelayUs(90);
 	DelayUs(90);
 #endif  //CONFIG_FPGA
@@ -235,14 +236,16 @@ VOID BOOT_Image2(VOID)
 	SDIOD_PIN_FCTRL(OFF);
 #endif
 
-	DBG_8195A("OSC8M: %x \n", OSC8M_Get());
+	DBG_8195A("OSC8M: %d \n", OSC8M_Get());
 
 	BOOT_Reason();
 
 	BOOT_RTC_Init();
 
 #if (!defined(CONFIG_FPGA))
-	random_seed = Gen_RandomSeed();	
+	if (SYSCFG0_BDOption() != SYSCFG_BD_QFN48_MCM_8MBFlash) {
+		random_seed = Gen_RandomSeed();
+	}
 #endif
 
 #if defined(CONFIG_WIFI_NORMAL) && defined(CONFIG_NETWORK)

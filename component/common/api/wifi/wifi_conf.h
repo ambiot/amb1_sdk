@@ -462,6 +462,14 @@ int wifi_set_mode(rtw_mode_t mode);
 int wifi_off_fastly(void);
 
 /**
+ * @brief  Specify wpa mode for wifi connection.
+ * @param[in] wpa_mode: The desired wpa mode. It is defined as enum rtw_wpa_mode.
+ * @return  RTW_SUCCESS if setting wpa mode successful.
+ * @return  RTW_ERROR otherwise.
+ */
+int wifi_set_wpa_mode(rtw_wpa_mode wpa_mode);
+
+/**
  * @brief  Set IPS/LPS mode.
  * @param[in] ips_mode: The desired IPS mode. It becomes effective when wlan enter ips.\n
  *		@ref ips_mode is inactive power save mode. Wi-Fi automatically turns RF off if it is not associated to AP. Set 1 to enable inactive power save mode.
@@ -660,6 +668,20 @@ int wifi_scan_networks_mcc(rtw_scan_result_handler_t results_handler, void* user
  *			Those variables must remain valid until the scan is completed.
  */
 int wifi_scan_networks_with_ssid(int (results_handler)(char*, int, char *, void *), void* user_data, int scan_buflen, char* ssid, int ssid_len);
+
+/**
+ * @brief  Initiate a scan to search for 802.11 networks with specified SSID.
+ * @param[in]  results_handler: The callback function which will receive and process the result data.
+ * @param[in]  user_data: User specified data that will be passed directly to the callback function.
+ * @param[in]  scan_buflen: The length of the result storage structure.
+ * @param[in]  ssid: The SSID of target network.
+ * @param[in]  ssid_len: The length of the target network SSID.
+ * @return  RTW_SUCCESS or RTW_ERROR
+ * @note  Callback must not use blocking functions, since it is called from the context of the RTW thread.
+ *			The callback, user_data variables will be referenced after the function returns. 
+ *			Those variables must remain valid until the scan is completed.
+ */
+int wifi_scan_networks_with_ssid_by_extended_security(int (results_handler)(char*, int, char *, void *), void* user_data, int scan_buflen, char* ssid, int ssid_len);
 
 /**
 * @brief  Set the channel used to be partial scanned.
@@ -1163,7 +1185,35 @@ int wifi_get_sw_trx_statistics(rtw_net_device_stats_t *stats);
  * @return  RTW_ERROR: If switching channel is failed.
  */
 int wifi_ap_switch_chl_and_inform(unsigned char new_channel);
+#ifndef CONFIG_MCC_STA_AP_MODE
+/**
+ * @brief  Get BeaconCnt/rssi/CurIGValue/Fa_Ofdm_count/Fa_Cck_count value in driver.
+ * @return  RTW_SUCCESS: If the value is succesfully retrieved.
+ * @return  RTW_ERROR: If the value is not retrieved.
+ */
+int wifi_get_RxInfo(u8* BeaconCnt, int *rssi, u8* CurIGValue, u32* Fa_Ofdm_count, u32* Fa_Cck_count);
 
+/**
+ * @brief  Get CCK_Crc_Fail/CCK_Crc_OK/OFDM_Crc_Fail/OFDM_Crc_OK/HT_Crc_Fail/HT_Crc_OK value in driver.
+ * @return  RTW_SUCCESS: If the value is succesfully retrieved.
+ * @return  RTW_ERROR: If the value is not retrieved.
+ */
+int wifi_get_RxCrcInfo(u32* CCK_Crc_Fail, u32* CCK_Crc_OK, u32* OFDM_Crc_Fail, u32* OFDM_Crc_OK, u32* HT_Crc_Fail, u32* HT_Crc_OK);
+
+/**
+ * @brief  Get tx_ok/tx_retry/tx_drop value in driver.
+ * @return  RTW_SUCCESS: If the value is succesfully retrieved.
+ * @return  RTW_ERROR: If the value is not retrieved.
+ */
+int wifi_get_TxInfo(u32 *tx_ok, u32 *tx_retry, u32 *tx_drop);
+
+/**
+ * @brief  Get tim_wake_up_count value in driver.
+ * @return  RTW_SUCCESS: If the value is succesfully retrieved.
+ * @return  RTW_ERROR: If the value is not retrieved.
+ */
+int wifi_get_PSInfo(u32* tim_wake_up_count);
+#endif
 #ifdef __cplusplus
   }
 #endif

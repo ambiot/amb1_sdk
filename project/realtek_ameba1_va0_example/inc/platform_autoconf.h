@@ -211,3 +211,15 @@
 #define CONFIG_RELEASE_BUILD_RAM_ALL 1
 #undef  CONFIG_IMAGE_ALL
 #define CONFIG_IMAGE_SEPARATE 1
+
+/*
+ * for USB speed 
+ */
+#define USB_FULL_SPEED  0
+#define USB_HIGH_SPEED  1
+#if ((USB_FULL_SPEED == 0) && (USB_HIGH_SPEED == 0)) || ((USB_FULL_SPEED == 1) && (USB_HIGH_SPEED == 1))
+#undef USB_FULL_SPEED
+#define USB_FULL_SPEED 1
+#undef USB_HIGH_SPEED
+#define USB_HIGH_SPEED 0
+#endif

@@ -754,6 +754,30 @@ int aes_crypt_ecb( aes_context *ctx,
                     unsigned char output[16] )
 {
 #ifdef RTL_HW_CRYPTO
+#ifdef CONFIG_PLATFORM_8195A
+    if(rom_ssl_ram_map.use_hw_crypto_func)
+    {
+        unsigned char key_buf[32 + 4], *key_buf_aligned;
+        unsigned char output_buf[16 + 4];
+
+        key_buf_aligned = (unsigned char *) (((unsigned int) key_buf + 4) / 4 * 4);
+
+        if(mode == AES_DECRYPT)
+        {
+            memcpy(key_buf_aligned, ctx->dec_key, ((ctx->nr - 6) * 4));
+            rom_ssl_ram_map.hw_crypto_aes_ecb_init(key_buf_aligned, ((ctx->nr - 6) * 4));
+            rom_ssl_ram_map.hw_crypto_aes_ecb_decrypt(input, 16, NULL, 0, output_buf);
+        }
+        else
+        {
+            memcpy(key_buf_aligned, ctx->enc_key, ((ctx->nr - 6) * 4));
+            rom_ssl_ram_map.hw_crypto_aes_ecb_init(key_buf_aligned,((ctx->nr - 6) * 4));
+            rom_ssl_ram_map.hw_crypto_aes_ecb_encrypt(input, 16, NULL, 0, output_buf);
+        }
+
+        memcpy(output, output_buf, 16);
+    }
+#else /* CONFIG_PLATFORM_8195A */
     if(rom_ssl_ram_map.use_hw_crypto_func)
     {
         unsigned char key_buf[32 + 4], *key_buf_aligned;
@@ -773,6 +797,7 @@ int aes_crypt_ecb( aes_context *ctx,
             rom_ssl_ram_map.hw_crypto_aes_ecb_encrypt(input, 16, NULL, 0, output);
         }
     }
+#endif /* CONFIG_PLATFORM_8195A */
 #endif /* RTL_HW_CRYPTO */
 #ifdef SUPPORT_HW_SW_CRYPTO
     else
@@ -896,6 +921,73 @@ int aes_crypt_cbc( aes_context *ctx,
                     unsigned char *output )
 {
 #ifdef RTL_HW_CRYPTO
+#ifdef CONFIG_PLATFORM_8195A
+    if(rom_ssl_ram_map.use_hw_crypto_func)
+    {
+        unsigned char key_buf[32 + 4], *key_buf_aligned;
+        unsigned char iv_buf[16 + 4], *iv_buf_aligned, iv_tmp[16];
+        unsigned char *output_buf;
+        size_t length_done = 0;
+
+        if(length % 16)
+            return(POLARSSL_ERR_AES_INVALID_INPUT_LENGTH);
+
+        if(length > 0)
+        {
+            key_buf_aligned = (unsigned char *) (((unsigned int) key_buf + 4) / 4 * 4);
+            iv_buf_aligned = (unsigned char *) (((unsigned int) iv_buf + 4) / 4 * 4);
+
+            if(length < RTL_CRYPTO_FRAGMENT)
+                output_buf = polarssl_malloc(length + 4);
+            else
+                output_buf = polarssl_malloc(RTL_CRYPTO_FRAGMENT + 4);
+
+            if(output_buf == NULL)
+                return -1;
+
+            memcpy(iv_buf_aligned, iv, 16);
+
+            if(mode == AES_DECRYPT)
+            {
+                memcpy(key_buf_aligned, ctx->dec_key, ((ctx->nr - 6) * 4));
+                rom_ssl_ram_map.hw_crypto_aes_cbc_init(key_buf_aligned, ((ctx->nr - 6) * 4));
+
+                while((length - length_done) > RTL_CRYPTO_FRAGMENT)
+                {
+                    memcpy(iv_tmp, (input + length_done + RTL_CRYPTO_FRAGMENT - 16), 16);
+                    rom_ssl_ram_map.hw_crypto_aes_cbc_decrypt(input + length_done, RTL_CRYPTO_FRAGMENT, iv_buf_aligned, 16, output_buf);
+                    memcpy(output + length_done, output_buf, RTL_CRYPTO_FRAGMENT);
+                    memcpy(iv_buf_aligned, iv_tmp, 16);
+                    length_done += RTL_CRYPTO_FRAGMENT;
+                }
+
+                memcpy(iv_tmp, (input + length - 16), 16);
+                rom_ssl_ram_map.hw_crypto_aes_cbc_decrypt(input + length_done, length - length_done, iv_buf_aligned, 16, output_buf);
+                memcpy(output + length_done, output_buf, length - length_done);
+                memcpy(iv, iv_tmp, 16);
+            }
+            else
+            {
+                memcpy(key_buf_aligned, ctx->enc_key, ((ctx->nr - 6) * 4));
+                rom_ssl_ram_map.hw_crypto_aes_cbc_init(key_buf_aligned,((ctx->nr - 6) * 4));
+
+                while((length - length_done) > RTL_CRYPTO_FRAGMENT)
+                {
+                    rom_ssl_ram_map.hw_crypto_aes_cbc_encrypt(input + length_done, RTL_CRYPTO_FRAGMENT, iv_buf_aligned, 16, output_buf);
+                    memcpy(output + length_done, output_buf, RTL_CRYPTO_FRAGMENT);
+                    memcpy(iv_buf_aligned, (output_buf + RTL_CRYPTO_FRAGMENT - 16), 16);
+                    length_done += RTL_CRYPTO_FRAGMENT;
+                }
+
+                rom_ssl_ram_map.hw_crypto_aes_cbc_encrypt(input + length_done, length - length_done, iv_buf_aligned, 16, output_buf);
+                memcpy(output + length_done, output_buf, length - length_done);
+                memcpy(iv, (output_buf + (length - length_done) - 16), 16);
+            }
+
+            polarssl_free(output_buf);
+        }
+    }
+#else /* CONFIG_PLATFORM_8195A */
     if(rom_ssl_ram_map.use_hw_crypto_func)
     {
         unsigned char key_buf[32 + 4], *key_buf_aligned;
@@ -946,6 +1038,7 @@ int aes_crypt_cbc( aes_context *ctx,
             }
         }
     }
+#endif /* CONFIG_PLATFORM_8195A */
 #endif /* RTL_HW_CRYPTO */
 #ifdef SUPPORT_HW_SW_CRYPTO
     else

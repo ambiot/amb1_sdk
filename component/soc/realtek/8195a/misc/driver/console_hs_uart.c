@@ -137,7 +137,7 @@ void hs_uart_irq(uint32_t id, SerialIrq event)
 						serial_putc(sobj, KEY_BS);
 					}
 					hs_uart_send_string(cmd_history[cmd_history_index%CMD_HISTORY_LEN]);
-					strcpy(temp_buf, cmd_history[cmd_history_index%CMD_HISTORY_LEN]);
+					strncpy(temp_buf, cmd_history[cmd_history_index%CMD_HISTORY_LEN], LOG_SERVICE_BUFLEN);
 					buf_count = strlen(temp_buf);
 				}
 			}
@@ -157,7 +157,7 @@ void hs_uart_irq(uint32_t id, SerialIrq event)
 
 				/* save command */
 				rtw_memset(cmd_history[((cmd_history_count)%CMD_HISTORY_LEN)], '\0', buf_count+1);
-				strcpy(cmd_history[((cmd_history_count++)%CMD_HISTORY_LEN)], log_buf);
+				strncpy(cmd_history[((cmd_history_count++)%CMD_HISTORY_LEN)], log_buf, LOG_SERVICE_BUFLEN);
 				cmd_history_index = cmd_history_count%CMD_HISTORY_LEN;
 				//cmd_history_count++;
 				buf_count=0;

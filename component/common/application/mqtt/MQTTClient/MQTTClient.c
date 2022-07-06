@@ -262,6 +262,11 @@ exit:
     return rc;
 }
 
+void MQTTCloseSession(MQTTClient* c)
+{
+    c->ping_outstanding = 0;
+    c->isconnected = 0;
+}
 
 int cycle(MQTTClient* c, Timer* timer)
 {
@@ -346,8 +351,13 @@ int cycle(MQTTClient* c, Timer* timer)
             c->ping_outstanding = 0;
             break;
     }
+
+    if (keepalive(c) != SUCCESS) {
+        //check only keepalive FAILURE status so that previous FAILURE status can be considered as FAULT
+        rc = FAILURE;
+    }
+
 exit:
-    keepalive(c);
     if (rc == SUCCESS)
         rc = packet_type;
     return rc;
@@ -430,7 +440,10 @@ int MQTTConnect(MQTTClient* c, MQTTPacket_connectData* options)
 #endif 
 exit:
     if (rc == SUCCESS)
+    {
         c->isconnected = 1;
+        c->ping_outstanding = 0;
+    }
 
     return rc;
 }
@@ -490,6 +503,8 @@ int MQTTSubscribe(MQTTClient* c, const char* topicFilter, enum QoS qos, messageH
         rc = FAILURE;
 #endif
 exit:
+    if (rc == FAILURE)
+        MQTTCloseSession(c);
     return rc;
 }
 
@@ -533,6 +548,8 @@ int MQTTUnsubscribe(MQTTClient* c, const char* topicFilter)
         rc = FAILURE;
 #endif
 exit:
+    if (rc == FAILURE)
+        MQTTCloseSession(c);
     return rc;
 }
 
@@ -592,6 +609,8 @@ int MQTTPublish(MQTTClient* c, const char* topicName, MQTTMessage* message)
     }
 #endif 
 exit:
+    if (rc == FAILURE)
+        MQTTCloseSession(c);
     return rc;
 }
 
@@ -608,9 +627,8 @@ int MQTTDisconnect(MQTTClient* c)
 	len = MQTTSerialize_disconnect(c->buf, c->buf_size);
     if (len > 0)
         rc = sendPacket(c, len, &timer);            // send the disconnect packet
-        
-    c->isconnected = 0;
-
+    MQTTCloseSession(c);
+	
     return rc;
 }
 
@@ -621,7 +639,7 @@ void MQTTSetStatus(MQTTClient* c, int mqttstatus)
 	mqtt_printf(MQTT_INFO, "Set mqtt status to %s", mqtt_status_str[mqttstatus]);
 }
 
-int MQTTDataHandle(MQTTClient* c, fd_set *readfd, MQTTPacket_connectData *connectData, messageHandler messageHandler, char* address, char* topic)
+int MQTTDataHandle(MQTTClient* c, fd_set *readfd, MQTTPacket_connectData *connectData, messageHandler messageHandler, char* address, int  port, char* topic)
 {	
 	short packet_type = 0;
 	int rc = 0;
@@ -637,7 +655,7 @@ int MQTTDataHandle(MQTTClient* c, fd_set *readfd, MQTTPacket_connectData *connec
 			c->isconnected = 0;
 		}
 		mqtt_printf(MQTT_INFO, "Connect Network \"%s\"", address);
-		if((rc = NetworkConnect(c->ipstack, address, 1883)) != 0){
+		if((rc = NetworkConnect(c->ipstack, address, port)) != 0){
 			mqtt_printf(MQTT_INFO, "Return code from network connect is %d\n", rc);
 			goto exit;
 		}
@@ -838,7 +856,10 @@ int MQTTDataHandle(MQTTClient* c, fd_set *readfd, MQTTPacket_connectData *connec
 						break;
 				}
 			}
-			keepalive(c);
+			if (keepalive(c) != SUCCESS) {
+		        //check only keepalive FAILURE status so that previous FAILURE status can be considered as FAULT
+		        rc = FAILURE;
+		    }
 			break;			
 		default:
 			break;

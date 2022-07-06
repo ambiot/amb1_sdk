@@ -7,19 +7,11 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2006-2013 ARM Limited
+  * Copyright (c) 2015, Realtek Semiconductor Corp.
+  * All rights reserved.
   *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  *     http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
+  * This module is a confidential and proprietary property of RealTek and
+  * possession or use of this module requires written permission of RealTek.
   ****************************************************************************** 
   */
 #ifndef MBED_SERIAL_EX_API_H
@@ -46,9 +38,9 @@ extern "C" {
 */
 typedef enum {
     FifoLv1Byte=0,    /*!< 1-byte */
-    FifoLvQuarter=1,  /*!< 4-byte */
-    FifoLvHalf=2,     /*!< 8-byte */
-    FifoLvFull=3      /*!< 14-byte */
+    FifoLvQuarter=1,  /*!< 4-byte/8-byte(for 8195B/8710C) */
+    FifoLvHalf=2,     /*!< 8-byte/16-byte(for 8195B/8710C) */
+    FifoLvFull=3      /*!< 14-byte/30-bytes(for 8195B/8710C) */
 } SerialFifoLevel;
 
 /**
@@ -148,16 +140,16 @@ int32_t serial_recv_stream_dma(serial_t *obj, char *prxbuf, uint32_t len);
 int32_t serial_send_stream_dma(serial_t *obj, char *ptxbuf, uint32_t len);
 
 /**
-  * @brief  stop the sream or steam_dma RX.
+  * @brief  stop the stream or stream_dma TX.
   * @param  obj: uart object define in application software.
-  * @retval : HAL_Status
+  * @retval : number of bytes sent before stop
   */
 int32_t serial_send_stream_abort(serial_t *obj);
 
 /**
-  * @brief  stop the sream or steam_dma TX.
+  * @brief  stop the stream or stream_dma RX.
   * @param  obj: uart object define in application software.
-  * @retval : HAL_Status
+  * @retval : number of bytes received before stop
   */
 int32_t serial_recv_stream_abort(serial_t *obj);
 
@@ -195,9 +187,27 @@ int32_t serial_recv_stream_timeout(serial_t *obj, char *prxbuf, uint32_t len, ui
   * @param  timeout_ms: polling time before timeout.
   * @param  force_cs: forcing context switch function.
   * @retval : the byte count received before timeout, or error(<0)
-  * @note this function is asynchronous API.
+  * @note this function is asynchronous API. Some parameters have changed for AmebaD.
   */
 int32_t serial_recv_stream_dma_timeout(serial_t *obj, char *prxbuf, uint32_t len, uint32_t timeout_ms,	void *force_cs);
+
+/**
+  * @brief  uart rx fifo level setting.
+  * @param  obj: uart object define in application software.
+  * @param  FifoLv: @see SerialFifoLevel
+  * @retval   none
+  */
+void serial_rx_fifo_level(serial_t *obj, SerialFifoLevel FifoLv);
+
+#if (defined(CONFIG_PLATFORM_8710C) && (CONFIG_PLATFORM_8710C == 1))
+/**
+  * @brief  controls the RTS signal.
+  * @param  obj: uart object define in application software.
+  * @param  rts_state: RTS signal control value.
+  * @retval   none
+  */
+void serial_rts_control(serial_t *obj, BOOLEAN rts_state);
+#endif
 
 ///@}
 

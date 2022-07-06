@@ -80,7 +80,6 @@ typedef enum {
 	PullNone  = 0, //IN HIGHZ
 	PullUp    = 1,
 	PullDown  = 2,
-	OpenDrain = 3, //OUT OpenDrain
 	PullDefault = PullNone
 } PinMode;
 

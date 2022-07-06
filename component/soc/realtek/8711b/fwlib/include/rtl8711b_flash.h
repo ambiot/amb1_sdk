@@ -253,6 +253,8 @@ typedef struct {
 #define FLASH_CMD_REMS4			0x94            // read ID for 4x I/O mode //this is diff with MXIC
 #define FLASH_CMD_RDSCUR		0x48            // read security register //this is diff with MXIC
 #define FLASH_CMD_WRSCUR		0x42            // write security register //this is diff with MXIC
+#define FLASH_CM_ERSCUR		0x44		//erase security register //this is diff with MXIC
+#define FLASH_CM_RDUID			0x4B		//read unique ID //this is diff with MXIC
 
 #define FLASH_DM_CYCLE_2O		0x08
 #define FLASH_DM_CYCLE_2IO		0x04
@@ -275,6 +277,9 @@ typedef struct {
 #define FLASH_ID_EON				4
 #define FLASH_ID_GD				5
 #define FLASH_ID_BOHONG			6
+#define FLASH_ID_FM				7
+#define FLASH_ID_XTX			8
+
 
 /**
   * @}
@@ -289,6 +294,8 @@ typedef struct {
 #define MANUFACTURER_ID_BOHONG			0x68
 #define MANUFACTURER_ID_GD				0xC8
 #define MANUFACTURER_ID_EON				0x1C
+#define MANUFACTURER_ID_FM				0xA1
+#define MANUFACTURER_ID_XTX				0x0B
 
 /**
   * @}
@@ -344,6 +351,13 @@ void FLASH_TxData12BXIP(u32 StartAddr, u8 DataPhaseLen, u8* pData);
 void FLASH_TxData256BXIP(u32 StartAddr, u32 DataPhaseLen, u8* pData);
 void FLASH_EraseXIP(u32 EraseType, u32 Address);
 void FLASH_EreaseDwordsXIP(u32 address, u32 dword_num);
+
+void FLASH_ReadSecurityReg16XIP( u32 Addr, u8 read_len, u8* read_data);
+void FLASH_ReadUIDXIP(u8 read_len, u8* read_data);
+void FLASH_EraseSecurityRegXIP( u32 Addr);
+void FLASH_ProgramSecurityRegXIP(u32 StartAddr, u16 DataPhaseLen, u8* pData);
+void FLASH_ReadSecurityReg256XIP(u32 start_addr, u16 read_len, u8* read_data);
+
 /**
   * @}
   */

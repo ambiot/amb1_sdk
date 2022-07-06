@@ -11,8 +11,25 @@
 #define _RTL8195A_OTG_H_
 
 #include "rtl8195a.h"
-#define OTG_FAST_INIT   1
+#include "platform_autoconf.h"
 
+#define OTG_FAST_INIT   1
+#define DWC_EN_ISOC 1
+//#define DWC_EN_ISOC 0
+#if defined(DWC_EN_ISOC)
+#define USB_REQ_ISO_ASAP 1
+#endif
+
+#if defined(DWC_DEVICE_ONLY)
+#if (USB_FULL_SPEED == 1) && (USB_HIGH_SPEED == 0)
+#define USB_DEV_FULL_SPEED
+#else
+#define USB_DEV_HIGH_SPEED
+#endif
+#endif
+
+#define DWC_RM_DEV_RDNT_SRC
+#define DWC_RM_HOST_RDNT_SRC
 #define HAL_OTG_READ32(addr)            HAL_READ32(USB_OTG_REG_BASE, (u32)addr)
 #define HAL_OTG_WRITE32(addr, value)    HAL_WRITE32(USB_OTG_REG_BASE, (u32)addr, value)
 

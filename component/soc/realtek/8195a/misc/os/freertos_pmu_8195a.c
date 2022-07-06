@@ -201,28 +201,31 @@ void pmu_enable_wakelock_stats(unsigned char enable) {
     generate_wakelock_stats = enable;
 }
 
-void pmu_get_wakelock_hold_stats( char *pcWriteBuffer ) {
+void pmu_get_wakelock_hold_stats( char *pcWriteBuffer, unsigned int BufferSize) {
     uint32_t i;
     uint32_t current_timestamp = osKernelSysTick();
+
+    if (pcWriteBuffer == NULL)
+        return;
 
     *pcWriteBuffer = 0x00;
 
     if (generate_wakelock_stats) {
         // print header
-        sprintf(pcWriteBuffer, "wakelock_id\tholdtime\r\n");
+        snprintf(pcWriteBuffer, BufferSize, "wakelock_id\tholdtime\r\n");
         pcWriteBuffer += strlen( pcWriteBuffer );
 
         for (i=0; i<32; i++) {
             if (last_wakelock_state[i] == 1) {
-                sprintf(pcWriteBuffer, "%x\t\t%d\r\n", i, hold_wakelock_time[i] + (current_timestamp - last_acquire_wakelock_time[i]));
+                snprintf(pcWriteBuffer, BufferSize, "%x\t\t%d\r\n", i, hold_wakelock_time[i] + (current_timestamp - last_acquire_wakelock_time[i]));
             } else {
                 if (hold_wakelock_time[i] > 0) {
-                    sprintf(pcWriteBuffer, "%x\t\t%d\r\n", i, hold_wakelock_time[i]);
+                    snprintf(pcWriteBuffer, BufferSize, "%x\t\t%d\r\n", i, hold_wakelock_time[i]);
                 }
             }
             pcWriteBuffer += strlen( pcWriteBuffer );
         }
-        sprintf(pcWriteBuffer, "time passed: %d ms, system sleep %d ms\r\n", current_timestamp - base_sys_time, sys_sleep_time);
+        snprintf(pcWriteBuffer, BufferSize,  "time passed: %d ms, system sleep %d ms\r\n", current_timestamp - base_sys_time, sys_sleep_time);
     }
 }
 

@@ -260,6 +260,7 @@ pbuf_alloc(pbuf_layer layer, u16_t length, pbuf_type type)
       (PBUF_POOL_BUFSIZE_ALIGNED - LWIP_MEM_ALIGN_SIZE(offset)) > 0 );
     /* set reference count (needed here in case we fail) */
     p->ref = 1;
+    p->flags = 0;
 
     /* now allocate the tail of the pbuf chain */
 

@@ -27,7 +27,12 @@ extern void at_google_init(void);
 extern void at_transport_init(void);
 //extern void at_app_init(void);
 extern void at_mp_init(void);
-
+extern void at_bt_init(void);
+#if (CONFIG_JOYLINK || CONFIG_GAGENT || CONFIG_QQ_LINK ||	\
+	CONFIG_AIRKISS_CLOUD || CONFIG_ALINK || CONFIG_HILINK || CONFIG_GREE || \
+	(defined(CONFIG_RIC) && CONFIG_RIC))
+extern void at_cloud_init(void);
+#endif
 void at_log_init(void);
 
 char log_buf[LOG_SERVICE_BUFLEN];
@@ -77,6 +82,16 @@ log_init_t log_init_table[] = {
 #if CONFIG_ATCMD_MP
 	at_mp_init,
 #endif
+
+#if CONFIG_BT
+	at_bt_init,
+#endif
+
+#if (CONFIG_JOYLINK || CONFIG_GAGENT || CONFIG_QQ_LINK ||	\
+	CONFIG_AIRKISS_CLOUD || CONFIG_ALINK || CONFIG_HILINK || CONFIG_GREE || \
+	(defined(CONFIG_RIC) && CONFIG_RIC))	
+	at_cloud_init,
+#endif	
 };
 #else
 #error "not implement, add to linker script"

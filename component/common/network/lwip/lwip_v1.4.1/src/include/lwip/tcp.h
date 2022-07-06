@@ -368,9 +368,17 @@ void             tcp_setprio (struct tcp_pcb *pcb, u8_t prio);
 
 err_t            tcp_output  (struct tcp_pcb *pcb);
 
+/* Added by Realtek start */
+#if LWIP_RANDOMIZE_INITIAL_LOCAL_PORTS
+void             tcp_randomize_local_port   (void);
+#endif
+/* Added by Realtek end */
 
 const char* tcp_debug_state_str(enum tcp_state s);
 
+#ifdef LWIP_HOOK_TCP_ISN
+void tcp_isn_init(void);
+#endif
 
 #ifdef __cplusplus
 }

@@ -364,6 +364,12 @@
           <state>$PROJ_DIR$\..\..\..\component\common\mbed\targets\cmsis\rtl8711b</state>
           <state>$PROJ_DIR$\..\..\..\component\common\mbed\targets\hal\rtl8711b</state>
           <state>$PROJ_DIR$\..\..\..\component\common\network\coap\include</state>
+          <state>$PROJ_DIR$\..\..\..\component\common\application\andlink</state>
+          <state>$PROJ_DIR$\..\..\..\component\common\application\andlink\libcoap-4.1.1</state>
+          <state>$PROJ_DIR$\..\..\..\component\common\network\http2\nghttp2-1.31.0\includes</state>
+          <state>$PROJ_DIR$\..\..\..\component\common\drivers\wlan\realtek\src\core\option</state>
+          <state>$PROJ_DIR$\..\..\..\component\common\network\ssl\mbedtls-2.4.0\include</state>
+          <state>$PROJ_DIR$\..\..\..\component\common\api\wifi\rtw_wpa_supplicant\src\crypto</state>
         </option>
         <option>
           <name>CCStdIncCheck</name>
@@ -789,7 +795,7 @@
         </option>
         <option>
           <name>IlinkSuppressDiags</name>
-          <state></state>
+          <state>Lp005, Lp006</state>
         </option>
         <option>
           <name>IlinkTreatAsRem</name>
@@ -1058,10 +1064,13 @@
     </file>
     <file>
       <name>$PROJ_DIR$\..\..\..\component\soc\realtek\8711b\app\monitor\ram\rtl_trace.c</name>
-    </file>    
+    </file>
   </group>
   <group>
     <name>lib</name>
+    <file>
+      <name>$PROJ_DIR$\..\..\..\component\soc\realtek\8711b\misc\bsp\lib\common\IAR\lib_eap.a</name>
+    </file>
     <file>
       <name>$PROJ_DIR$\..\..\..\component\soc\realtek\8711b\misc\bsp\lib\common\IAR\lib_http.a</name>
     </file>
@@ -1069,13 +1078,13 @@
       <name>$PROJ_DIR$\..\..\..\component\soc\realtek\8711b\misc\bsp\lib\common\IAR\lib_mdns.a</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\..\..\component\soc\realtek\8711b\misc\bsp\lib\common\IAR\lib_p2p.a</name>
-    </file>
-    <file>
       <name>$PROJ_DIR$\..\..\..\component\soc\realtek\8711b\misc\bsp\lib\common\IAR\lib_platform.a</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\..\..\component\soc\realtek\8711b\misc\bsp\lib\common\IAR\lib_rtlstd.a</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\..\..\component\soc\realtek\8711b\misc\bsp\lib\common\IAR\lib_websocket.a</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\..\..\component\soc\realtek\8711b\misc\bsp\lib\common\IAR\lib_wlan.a</name>
@@ -1102,10 +1111,10 @@
         <group>
           <name>rtw_wpa_supplicant</name>
           <file>
-            <name>$PROJ_DIR$\..\..\..\component\common\api\wifi\rtw_wpa_supplicant\wpa_supplicant\wifi_eap_config.c</name>
+            <name>$PROJ_DIR$\..\..\..\component\common\api\wifi\rtw_wpa_supplicant\src\crypto\tls_polarssl.c</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\component\common\api\wifi\rtw_wpa_supplicant\wpa_supplicant\wifi_p2p_config.c</name>
+            <name>$PROJ_DIR$\..\..\..\component\common\api\wifi\rtw_wpa_supplicant\wpa_supplicant\wifi_eap_config.c</name>
           </file>
           <file>
             <name>$PROJ_DIR$\..\..\..\component\common\api\wifi\rtw_wpa_supplicant\wpa_supplicant\wifi_wps_config.c</name>
@@ -1144,6 +1153,30 @@
       </file>
       <file>
         <name>$PROJ_DIR$\..\..\..\component\common\api\network\src\wlan_network.c</name>
+      </file>
+    </group>
+    <group>
+      <name>coap</name>
+      <file>
+        <name>$PROJ_DIR$\..\..\..\component\common\network\coap\sn_coap_ameba_port.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\..\..\..\component\common\network\coap\sn_coap_builder.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\..\..\..\component\common\network\coap\sn_coap_header_check.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\..\..\..\component\common\network\coap\sn_coap_parser.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\..\..\..\component\common\network\coap\sn_coap_protocol.c</name>
+      </file>
+    </group>
+    <group>
+      <name>googlenest</name>
+      <file>
+        <name>$PROJ_DIR$\..\..\..\component\common\application\google\google_tls.c</name>
       </file>
     </group>
     <group>
@@ -1430,6 +1463,9 @@
           <name>$PROJ_DIR$\..\..\..\component\common\network\ssl\ssl_ram_map\ssl_ram_map.c</name>
         </file>
       </group>
+	  <file>
+      	<name>$PROJ_DIR$\..\..\..\component\common\drivers\wlan\realtek\src\core\option\rtw_opt_crypto_ssl.c</name>
+      </file>
     </group>
   </group>
   <group>
@@ -1578,6 +1614,21 @@
         <name>$PROJ_DIR$\..\..\..\component\soc\realtek\8711b\fwlib\ram_lib\rtl8710b_sleepcfg.c</name>
       </file>
     </group>
+    <group>
+      <name>wlan</name>
+      <excluded>
+        <configuration>Debug</configuration>
+      </excluded>
+      <file>
+        <name>$PROJ_DIR$\..\..\..\component\common\drivers\wlan\realtek\src\core\option\rtw_opt_power_by_rate.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\..\..\..\component\common\drivers\wlan\realtek\src\core\option\rtw_opt_power_limit.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\..\..\..\component\common\drivers\wlan\realtek\src\core\option\rtw_opt_skbuf.c</name>
+      </file>
+    </group>
   </group>
   <group>
     <name>user</name>
@@ -1593,6 +1644,9 @@
         <name>$PROJ_DIR$\..\..\..\component\common\example\bcast\example_bcast.c</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\..\..\..\component\common\example\coap\example_coap.c</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\..\..\..\component\common\example\eap\example_eap.c</name>
       </file>
       <file>
@@ -1600,6 +1654,9 @@
       </file>
       <file>
         <name>$PROJ_DIR$\..\..\..\component\common\example\get_beacon_frame\example_get_beacon_frame.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\..\..\..\component\common\example\googlenest\example_google.c</name>
       </file>
       <file>
         <name>$PROJ_DIR$\..\..\..\component\common\example\high_load_memory_use\example_high_load_memory_use.c</name>
@@ -1615,6 +1672,9 @@
       </file>
       <file>
         <name>$PROJ_DIR$\..\..\..\component\common\example\httpd\example_httpd.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\..\..\..\component\common\example\inic_gspi\example_inic_gspi.c</name>
       </file>
       <file>
         <name>$PROJ_DIR$\..\..\..\component\common\example\mcast\example_mcast.c</name>
@@ -1653,13 +1713,31 @@
         <name>$PROJ_DIR$\..\..\..\component\common\example\wifi_mac_monitor\example_wifi_mac_monitor.c</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\..\..\..\component\common\example\wifi_roaming\example_wifi_roaming.c</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\..\..\..\component\common\example\wlan_fast_connect\example_wlan_fast_connect.c</name>
       </file>
       <file>
         <name>$PROJ_DIR$\..\..\..\component\common\example\wlan_scenario\example_wlan_scenario.c</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\..\..\..\component\common\example\websocket\example_wsclient.c</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\..\..\..\component\common\example\xml\example_xml.c</name>
+      </file>
+    </group>
+    <group>
+      <name>wigadget</name>
+      <file>
+        <name>$PROJ_DIR$\..\..\..\component\common\application\wigadget\cloud_link.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\..\..\..\component\common\application\wigadget\shtc1.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\..\..\..\component\common\application\wigadget\wigadget.c</name>
       </file>
     </group>
     <file>
@@ -1673,6 +1751,9 @@
     </file>
     <file>
       <name>$PROJ_DIR$\..\..\..\component\common\utilities\uart_socket.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\..\..\component\common\utilities\webserver.c</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\..\..\component\common\utilities\xml.c</name>

@@ -1884,19 +1884,31 @@ static void uartadapter_auto_reconnect(void* param)
 	//uartadapter_gpio_led_mode(ua_global_socket, UART_ADAPTER_LED_OFF);			
 	
 	if(0 == memcmp(&ua_socket->ip, &xnetif[0].ip_addr, sizeof(ip_addr_t))){
+#if LWIP_VERSION_MAJOR >= 2
+		IPaddress = ip_addr_get_ip4_u32(&ua_socket->ip);
+#else
 		IPaddress = ua_socket->ip.addr;
+#endif
 		iptab[0] = (uint8_t)(IPaddress >> 24);
 		iptab[1] = (uint8_t)(IPaddress >> 16);
 		iptab[2] = (uint8_t)(IPaddress >> 8);
 		iptab[3] = (uint8_t)(IPaddress);		
 		ua_printf(UA_INFO, "reconnect IP address no change, %d.%d.%d.%d", iptab[3], iptab[2], iptab[1], iptab[0]);		
 	}else{
+#if LWIP_VERSION_MAJOR >= 2
+		IPaddress = ip_addr_get_ip4_u32(&ua_socket->ip);
+#else
 		IPaddress = ua_socket->ip.addr;
+#endif
 		iptab[0] = (uint8_t)(IPaddress >> 24);
 		iptab[1] = (uint8_t)(IPaddress >> 16);
 		iptab[2] = (uint8_t)(IPaddress >> 8);
 		iptab[3] = (uint8_t)(IPaddress);	
-		IPaddress2 = xnetif[0].ip_addr.addr;
+#if LWIP_VERSION_MAJOR >= 2
+		IPaddress = ip_addr_get_ip4_u32(&xnetif[0].ip_addr);
+#else
+		IPaddress = xnetif[0].ip_addr.addr;
+#endif
 		iptab2[0] = (uint8_t)(IPaddress2 >> 24);
 		iptab2[1] = (uint8_t)(IPaddress2 >> 16);
 		iptab2[2] = (uint8_t)(IPaddress2 >> 8);

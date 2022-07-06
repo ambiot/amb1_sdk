@@ -6,7 +6,12 @@
 //----- ------------------------------------------------------------------
 //#include "wireless.h"
 #include "dlist.h"
-
+#include "FreeRTOS.h"
+#include "task.h"
+#include "event_groups.h"
+#include "semphr.h"
+#include "queue.h"
+#include "timers.h"
 // --------------------------------------------
 //	Platform dependent include file
 // --------------------------------------------
@@ -185,9 +190,9 @@ void cli(void);
 #define HALT()				do { cli(); for(;;);} while(0)
 #undef ASSERT
 #define ASSERT(x)			do { \
-						if((x) == 0) \
+						if((x) == 0){\
 							printf("\n\rAssert(" #x ") failed on line %d in file %s", __LINE__, __FILE__); \
-						HALT(); \
+						HALT();}\
 					} while(0)
 
 #undef DBG_ASSERT

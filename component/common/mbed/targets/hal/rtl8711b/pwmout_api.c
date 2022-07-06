@@ -23,6 +23,8 @@
 #include "pwmout_api.h"
 
 #define PWM_TIMER	5
+#define XTAL_CLK_MHz      (XTAL_ClkGet()/1000000)
+
 u32 pin2chan[13][2] = {
 	{PA_23, 0},
 	{PA_15, 1},
@@ -107,8 +109,8 @@ void pwmout_init(pwmout_t* obj, PinName pin)
 	
 	ch_start[pwm_chan] = 1;
 	obj->pwm_idx = pwm_chan;
-	obj->period = 0x10000 * (prescaler + 1) / 40;
-	obj->pulse = 0x1000 * (prescaler + 1) / 40;
+	obj->period = 0x10000 * (prescaler + 1) / XTAL_CLK_MHz;
+	obj->pulse = 0x1000 * (prescaler + 1) / XTAL_CLK_MHz;
 
 }
 
@@ -160,7 +162,7 @@ void pwmout_write(pwmout_t* obj, float percent) //write duty-cycle
 
 	obj->pulse = (percent * obj->period);	
 	
-	ccrx = (u32)(obj->pulse  * 40 / (prescaler + 1)) & 0x0000ffff;
+	ccrx = (u32)(obj->pulse  * XTAL_CLK_MHz / (prescaler + 1)) & 0x0000ffff;
 	
 	RTIM_CCRxSet(TIM5, ccrx, obj->pwm_idx);	
 }
@@ -211,15 +213,15 @@ void pwmout_period_us(pwmout_t* obj, int us)
 {
 	u32 arr;
 	float dc = pwmout_read(obj);
-	u32 tmp = us * 40 / (prescaler + 1);
+	u32 tmp = us * XTAL_CLK_MHz / (prescaler + 1);
 
 	if(tmp > 0x10000){
-		prescaler = us * 40 / 0x10000;
+		prescaler = us * XTAL_CLK_MHz / 0x10000;
 		RTIM_PrescalerConfig(TIM5, prescaler, TIM_PSCReloadMode_Update);
 	}
 
 	obj->period = us;
-	arr = us * 40 / (prescaler + 1) - 1;
+	arr = us * XTAL_CLK_MHz / (prescaler + 1) - 1;
 	
 	RTIM_ChangePeriod(TIM5, arr);
 	pwmout_write(obj, dc);
@@ -258,7 +260,7 @@ void pwmout_pulsewidth_us(pwmout_t* obj, int us)
 	u32 ccrx;
 	
 	obj->pulse = (float)us;
-	ccrx = (u32)(obj->pulse  * 40 / (prescaler + 1)) & 0x0000ffff;
+	ccrx = (u32)(obj->pulse  * XTAL_CLK_MHz / (prescaler + 1)) & 0x0000ffff;
 	RTIM_CCRxSet(TIM5, ccrx, obj->pwm_idx);	
 }
 
@@ -271,4 +273,22 @@ void pwmout_stop(pwmout_t* obj)
 {
 	RTIM_CCxCmd(TIM5, obj->pwm_idx, TIM_CCx_Disable);
 }
+
+/**
+  * @brief  Set the polarity of the specified PWM channel.
+  * @param  obj: PWM object define in application software.
+  * @param  polarity: 
+  				0: Output low when timer count < setvalue.
+  				1: Output high when timer count < setvalue.(default)
+  * note: use after setting duty cycle or pulse width.
+  * @retval none
+  */
+void pwmout_set_polarity(pwmout_t* obj, int polarity)
+{
+	if(0 == polarity)
+		RTIM_CCxPolarityConfig(TIM5, TIM_CCPolarity_Low, obj->pwm_idx);
+	else
+		RTIM_CCxPolarityConfig(TIM5, TIM_CCPolarity_High, obj->pwm_idx);
+}
+
 

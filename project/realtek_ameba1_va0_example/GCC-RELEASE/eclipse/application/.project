@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
 	<name>application</name>
 	<comment></comment>
@@ -73,6 +73,11 @@
 			<name>SDRAM/stdlib_patch.c</name>
 			<type>1</type>
 			<locationURI>PARENT-5-PROJECT_LOC/component/common/api/platform/stdlib_patch.c</locationURI>
+		</link>
+		<link>
+			<name>SDRAM/wigadget</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
 			<name>cmsis/system_8195a.c</name>
@@ -233,6 +238,21 @@
 			<name>SDRAM/ssl/ssl_ram_map</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>SDRAM/wigadget/cloud_link.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/component/common/application/wigadget/cloud_link.c</locationURI>
+		</link>
+		<link>
+			<name>SDRAM/wigadget/shtc1.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/component/common/application/wigadget/shtc1.c</locationURI>
+		</link>
+		<link>
+			<name>SDRAM/wigadget/wigadget.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/component/common/application/wigadget/wigadget.c</locationURI>
 		</link>
 		<link>
 			<name>network/api/lwip_netconf.c</name>
@@ -690,6 +710,11 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
+			<name>utilities/example/example_amazon_awsiot.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/component/common/example/amazon_awsiot/example_amazon_awsiot.c</locationURI>
+		</link>
+		<link>
 			<name>utilities/example/example_bcast.c</name>
 			<type>1</type>
 			<locationURI>PARENT-5-PROJECT_LOC/component/common/example/bcast/example_bcast.c</locationURI>
@@ -705,9 +730,19 @@
 			<locationURI>PARENT-5-PROJECT_LOC/component/common/example/example_entry.c</locationURI>
 		</link>
 		<link>
+			<name>utilities/example/example_fatfs.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/component/common/example/fatfs/example_fatfs.c</locationURI>
+		</link>
+		<link>
 			<name>utilities/example/example_get_beacon_frame.c</name>
 			<type>1</type>
 			<locationURI>PARENT-5-PROJECT_LOC/component/common/example/get_beacon_frame/example_get_beacon_frame.c</locationURI>
+		</link>
+		<link>
+			<name>utilities/example/example_google.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/component/common/example/googlenest/example_google.c</locationURI>
 		</link>
 		<link>
 			<name>utilities/example/example_high_load_memory_use.c</name>
@@ -745,6 +780,16 @@
 			<locationURI>PARENT-5-PROJECT_LOC/component/common/example/mdns/example_mdns.c</locationURI>
 		</link>
 		<link>
+			<name>utilities/example/example_media_ms.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/component/common/example/media_multi_stream/example_media_ms.c</locationURI>
+		</link>
+		<link>
+			<name>utilities/example/example_media_ss.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/component/common/example/media_single_stream/example_media_ss.c</locationURI>
+		</link>
+		<link>
 			<name>utilities/example/example_mqtt.c</name>
 			<type>1</type>
 			<locationURI>PARENT-5-PROJECT_LOC/component/common/example/mqtt/example_mqtt.c</locationURI>
@@ -753,6 +798,11 @@
 			<name>utilities/example/example_nonblock_connect.c</name>
 			<type>1</type>
 			<locationURI>PARENT-5-PROJECT_LOC/component/common/example/nonblock_connect/example_nonblock_connect.c</locationURI>
+		</link>
+		<link>
+			<name>utilities/example/example_pppoe.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/component/common/example/pppoe/example_pppoe.c</locationURI>
 		</link>
 		<link>
 			<name>utilities/example/example_rarp.c</name>
@@ -803,6 +853,11 @@
 			<name>utilities/example/example_uart_update.c</name>
 			<type>1</type>
 			<locationURI>PARENT-5-PROJECT_LOC/component/common/example/uart_firmware_update/example_uart_update.c</locationURI>
+		</link>
+		<link>
+			<name>utilities/example/example_usb_msc.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/component/common/example/usb_mass_storage/example_usb_msc.c</locationURI>
 		</link>
 		<link>
 			<name>utilities/example/example_wifi_manager.c</name>

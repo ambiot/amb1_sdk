@@ -9,7 +9,7 @@
  ******************************************************/
 
 #define WIFI_INDICATE_MSG	0
-#define WIFI_MANAGER_STACKSIZE	1500
+#define WIFI_MANAGER_STACKSIZE	1300
 #define WIFI_MANAGER_PRIORITY		(0) //Actual priority is 4 since calling rtw_create_task
 #define WIFI_MANAGER_Q_SZ	8
 
@@ -186,6 +186,20 @@ void wifi_indication( rtw_event_indicate_t event, char *buf, int buf_len, int fl
 		case WIFI_EVENT_BEACON_AFTER_DHCP:
 #if(WIFI_INDICATE_MSG==1)
 			printf("\n\r%s(): WIFI_EVENT_BEACON_AFTER_DHCP\n", __func__);
+#endif
+			break;
+		case WIFI_EVENT_IP_CHANGED:
+#if(WIFI_INDICATE_MSG==1)
+			printf("\n\r%s(): WIFI_EVENT_IP_CHANNGED\n", __func__);
+#endif
+			break;
+		case WIFI_EVENT_ICV_ERROR:
+#if(WIFI_INDICATE_MSG==1)
+			printf("\n\r%s(): WIFI_EVENT_ICV_ERROR\n", __func__);
+#endif
+		case WIFI_EVENT_CHALLENGE_FAIL:
+#if(WIFI_INDICATE_MSG==1)
+			printf("\n\r%s(): WIFI_EVENT_CHALLENGE_FAIL\n", __func__);
 #endif
 			break;
 	}

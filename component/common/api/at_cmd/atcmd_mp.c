@@ -1,6 +1,8 @@
 #include <platform_stdlib.h>
 #include <platform_opts.h>
 #include <gpio_api.h>
+#include <analogout_api.h>
+#include <analogin_api.h>
 #include "log_service.h"
 #include "atcmd_mp.h"
 
@@ -8,6 +10,10 @@
 	extern void fATM0(void *arg);	// MP ext0 AT command
 #endif
 
+#if CONFIG_ATCMD_MP_EXT1
+	extern void fATM1(void *arg);	// MP ext1 AT command
+#endif
+	
 #if CONFIG_ATCMD_MP
 //-------- AT MP commands ---------------------------------------------------------------
 void fATMG(void *arg)
@@ -20,8 +26,8 @@ void fATMG(void *arg)
     
 	AT_DBG_MSG(AT_FLAG_GPIO, AT_DBG_ALWAYS, "[ATMG]: _AT_MP_GPIO_TEST_");
 	if(!arg){
-		AT_DBG_MSG(AT_FLAG_GPIO, AT_DBG_ALWAYS, "[ATMG] Usage: ATSG=w,PINNAMES(ex:A0B1C2...),VALUE(0/1)");
-		AT_DBG_MSG(AT_FLAG_GPIO, AT_DBG_ALWAYS, "[ATMG] Usage: ATSG=r,PINNAMES(ex:A0B1C2...)");
+		AT_DBG_MSG(AT_FLAG_GPIO, AT_DBG_ALWAYS, "[ATMG] Usage: ATMG=w,PINNAMES(ex:A0B1C2...),VALUE(0/1)");
+		AT_DBG_MSG(AT_FLAG_GPIO, AT_DBG_ALWAYS, "[ATMG] Usage: ATMG=r,PINNAMES(ex:A0B1C2...)");
 		return;
 	}
 	
@@ -158,6 +164,60 @@ void fATMR(void *arg)
 #endif
 }
 
+void fATMD(void *arg)
+{
+	int argc = 0;
+	char *argv[MAX_ARGC] = {0}, *ptmp;;
+	u16 vdac;
+	dac_t dac0;
+	
+	argc = parse_param(arg, argv);
+#if CONFIG_BT
+	analogout_init(&dac0, DA_0);
+#endif
+	HalDelayUs(50*1000);	// delay 50 ms for DAC_CAP 10uF
+	vdac = strtoul(argv[1], &ptmp, 16);
+	// 0x800(0v) ~ 0x000(1.65v) ~ 0x7ff(3.3v)
+#if CONFIG_BT
+	analogout_write_u16(&dac0, vdac);
+#endif	
+	AT_PRINTK("[ATMD]: DAC = 0x%x", vdac);
+}
+
+#define AD2MV(ad,offset,gain) ((ad-offset)*1000/gain)
+void fATMA(void *arg)
+{
+	int argc = 0, channel;
+	char *argv[MAX_ARGC] = {0}, *ptmp;
+	u16 offset, gain, vadc, mv;
+	analogin_t adc;
+	
+	argc = parse_param(arg, argv);
+	channel = atoi(argv[1]);
+	if(channel >= 1 && channel <= 3){
+		if(channel == 1)
+			analogin_init(&adc, AD_1);
+		else if(channel == 2)
+			analogin_init(&adc, AD_2);
+		else
+			analogin_init(&adc, AD_3);
+		vadc = (analogin_read_u16(&adc)>>4);
+		analogin_deinit(&adc);
+		
+		sys_adc_calibration(0, &offset, &gain);
+		if((offset != 0xFFFF) && (gain != 0xFFFF)){
+			if(vadc < offset){
+				mv = 0;
+			}else{
+				mv = AD2MV(vadc, offset, gain);
+			}
+			AT_PRINTK("[ATMA]: ADC%d:0x%x = %d mv", channel, vadc, mv); 
+		}else{
+			AT_PRINTK("[ATMA]: ADC%d:0x%x", channel, vadc);
+		}
+	}
+}
+
 void fATMt(void *arg)
 {
 	int argc = 0;
@@ -175,10 +235,15 @@ void fATMx(void *arg)
 log_item_t at_mp_items[] = {
 	{"ATMG", fATMG,},	// MP GPIO test
 	{"ATMR", fATMR,},	// MP SDR test
+	{"ATMD", fATMD,},	// MP DAC
+	{"ATMA", fATMA,},	// MP ADC
 	{"ATM#", fATMt,},	// test command
 	{"ATM?", fATMx,},	// Help
 #if CONFIG_ATCMD_MP_EXT0
 	{"ATM0", fATM0,},	// MP ext0 AT command
+#endif
+#if CONFIG_ATCMD_MP_EXT1
+	{"ATM1", fATM1,},	// MP ext1 AT command
 #endif
 };
 

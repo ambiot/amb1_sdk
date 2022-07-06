@@ -99,7 +99,16 @@
 
 #endif
 
-#if defined( PLATFORM_FREERTOS)
+#define RTW_RX_HANDLED			2
+#define RTW_RFRAME_UNAVAIL		3
+#define RTW_RFRAME_PKT_UNAVAIL	4
+#define RTW_RBUF_UNAVAIL		5
+#define RTW_RBUF_PKT_UNAVAIL	6
+#define RTW_SDIO_READ_PORT_FAIL	7
+
+#if defined( PLATFORM_ALIOS)
+#include "alios_service.h"
+#elif defined( PLATFORM_FREERTOS)
 #include "freertos_service.h"
 #elif defined( PLATFORM_ECOS)
 #include "ecos/ecos_service.h"
@@ -668,6 +677,8 @@ int rtw_push_to_xqueue( _xqueue* queue, void* message, u32 timeout_ms );
  * @return	  -1: No message was received from the queue.
  */
 int rtw_pop_from_xqueue( _xqueue* queue, void* message, u32 timeout_ms );
+
+int rtw_peek_from_xqueue( _xqueue* queue, void* message, u32 timeout_ms );
 
 /**
  * @brief  Delete a queue - freeing all the memory allocated for storing of messages placed on the queue.
@@ -1274,6 +1285,7 @@ struct osdep_service_ops {
 	int (*rtw_init_xqueue)( _xqueue* queue, const char* name, u32 message_size, u32 number_of_messages );
 	int (*rtw_push_to_xqueue)( _xqueue* queue, void* message, u32 timeout_ms );
 	int (*rtw_pop_from_xqueue)( _xqueue* queue, void* message, u32 timeout_ms );
+	int (*rtw_peek_from_xqueue)( _xqueue* queue, void* message, u32 timeout_ms );
 	int (*rtw_deinit_xqueue)( _xqueue* queue );
 	u32	(*rtw_get_current_time)(void);
 	u32 (*rtw_systime_to_ms)(u32 systime);

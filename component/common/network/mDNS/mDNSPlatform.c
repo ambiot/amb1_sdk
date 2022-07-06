@@ -34,4 +34,9 @@ char *mDNSPlatformHostname(void)
 #endif
 }
 
+uint8_t mDNSPlatformNetifIsUp(int idx)
+{
+	return netif_is_up(&xnetif[idx]);
+}
+
 /*-----------------------------------------------------------------------*/

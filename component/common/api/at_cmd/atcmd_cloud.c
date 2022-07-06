@@ -15,6 +15,18 @@ void fATCJ(void *arg)
 	}        
 	joylink_erase();
 }
+// set joylink wifi config mode
+void fATJM(void *arg)
+{
+	extern int jl_wifi_config_mode;
+	printf("\nset joylink wifi config mode: softap\n");
+	if(arg){
+		printf("[ATCJ]Usage : ATJM\n");
+		return;
+	}
+	jl_wifi_config_mode = 1;
+}
+
 #else
 void fATCJ(void *arg)
 {
@@ -119,13 +131,54 @@ USAGE:
 #endif
 
 #if CONFIG_ALINK
-extern void example_alink(void);
 extern int alink_erase_wifi_config();
 extern void alink_reset_to_factory(void *arg);
+extern int alink_write_device_info(int argc, unsigned char **argv);
+extern void alink_set_log_level(int argc, unsigned char **argv);
 
 void fATCA(void *arg)
 {
-	example_alink();
+	int argc;
+	int ret = -1;
+	unsigned char *argv[MAX_ARGC] = {0};
+	
+	if(!arg) { 
+		goto USAGE;
+	}
+	
+	argv[0] = "k/s/l/e/r";
+	argc = parse_param(arg, argv);
+	if (argc == 3) {
+		/*Set log level: ATCA=l, trace/debug/info/warn/fatal/none
+		if set wrong, set info level by default*/
+		if (!strcmp(argv[1], "l")) {
+			alink_set_log_level(argc, argv);
+			return;
+		} else {
+		/* Write device key/device secret */
+			ret = alink_write_device_info(argc, argv);
+			if (ret) {
+				goto USAGE;
+			} 
+			return;
+		}
+	} else if (argc == 2)	{
+	/* Erase wifi profile or reset user account binding : "ATCA=e" or "ATCA=r" */
+		if (!strcmp(argv[1], "e")) {
+			alink_erase_wifi_config();
+		}else if(!strcmp(argv[1], "r")) {
+			alink_reset_to_factory(NULL);
+		}
+	}
+
+USAGE:	
+	printf("\r\n[ATCA] Write ORDERLY device's key/secret into flash, set log level or erase wifi profile");
+	printf("\r\n[ATCA] Usage: ATCA=k,xxxxxxxx\t(set device key, 20-Byte long)");
+	printf("\r\n[ATCA] Usage: ATCA=s,xxxxxxxx\t(set device secret, 32-Byte long)");
+	printf("\r\n[ATCA] Usage: ATCA=l,xxxx\t(set log level, trace/debug/info/warn/error/fatal/none)");
+	printf("\r\n[ATCA] Usage: ATCA=e\t(erase AP  profile)");
+	printf("\r\n[ATCA] Usage: ATCA=r\t(reset user account binding)");
+	return;	
 }
 
 void fATCZ(void *arg)
@@ -140,13 +193,105 @@ void fATCT(void *arg)
 }
 #endif
 
+#if (defined(CONFIG_RIC) && CONFIG_RIC)
+#include "ric/ric_device.h"
+#include "ric/ric_dev_ota_rtl8710b.h"
+void fATCR(void *arg)
+{
+#if 0
+	int argc;
+	unsigned char len1, len2;
+	unsigned char *argv[MAX_ARGC] = {0};
+	
+	argv[0] = "ricloud";
+	argc = parse_param(arg, argv);
+	if(argc == 2 && !strcmp("ota", argv[1])) {
+		ric_ota_v v = {0};
+		v.loop = 0;
+		ric_dev_msg_dump(MSG_OTA_REQ, (void *)&v);
+	}else if(argc == 3 && !strcmp("ota", argv[1]) && (!strcmp("0", argv[2]) || !strcmp("1", argv[2]))) {
+		ric_ota_v v = {0};
+		v.loop = *argv[2] - '0';
+		ric_dev_msg_dump(MSG_OTA_REQ, (void *)&v);
+	}else if(argc == 3 && !strcmp("ota", argv[1]) && !strcmp("s", argv[2])) {
+		ric_dev_msg_dump(MSG_OTA_STP, NULL);	
+	}else if(argc == 4 && !strcmp("ota", argv[1]) && (!strcmp("0", argv[2]) || !strcmp("1", argv[2]))) {
+		ric_ota_v v = {0};
+		v.loop = *argv[2] - '0';
+		if(strlen(argv[3]) > sizeof(v.nv_num) -1) {
+			printf("\r\n[ATCR] error: the new version num should no longer than %d !", sizeof(v.nv_num) - 1);
+		}else {
+			strcpy(v.nv_num, argv[3]);
+			ric_dev_msg_dump(MSG_OTA_REQ, (void *)&v);
+		}
+	}else {
+		goto USAGE;
+	}
+	return;
+
+USAGE:	
+	printf("\r\n[ATCR] Control ameba operation to RICloud");
+	printf("\r\n[ATCR] Usage: ATCR=ota[,loop]  ==>ota with default expected fw version num for one time [or one(loop:0) / infinite(loop:1) time(s)]");
+	printf("\r\n[ATCR] Usage: ATCR=ota,loop,version  ==>ota with specified fw version num(version) for one(loop:0) or  infinite(loop:1) time(s)");
+	printf("\r\n[ATCR] Usage: ATCR=ota,s  ==>stop the infinite ota if it's started before");
+	return;
+#endif	
+}
+extern int ric_set_userid(char *);
+extern int ric_set_server_ip(char *);
+extern void  ric_flash_erase_sector(uint32_t address);
+
+void fATUS(void *arg)
+{
+	int argc;
+	char *argv[MAX_ARGC] = {0};
+	
+	argv[0] = "ricloud";
+	argc = parse_param(arg,argv);
+	if(argc == 3){
+		if(!strcmp("userid",argv[1]))
+		{
+			ric_set_userid(argv[2]);	
+		}else if(!strcmp("svrip",argv[1])){
+			ric_set_server_ip(argv[2]);
+		}
+	}else if(argc == 2){
+          if(!strcmp("erase",argv[1])){
+            ric_flash_erase_sector(CONFIG_USER_INFO);
+          }
+    }else{
+		goto USAGE;
+	}
+	return;
+USAGE:	
+	printf("\r\n[ATUS] Setup User and Server info RICloud");
+	printf("\r\n[ATUS] Usage: ATUS=userid,xxxx  ==>set registed user id");
+	printf("\r\n[ATUS] Usage: ATUS=svrip,xxx.xxx.xxx.xxx ==>set ricloud server ip address");
+	printf("\r\n[ATUS] Usage: ATUS=erase ==>erase user id and server ip address");
+	return;		
+}
+
+
+#endif
+
 void fATCx(void *arg)
 {	
 }
 
+#if CONFIG_GREE
+extern void gree_erase_wifi_config();
+
+void fATCR(void *arg)
+{
+	gree_erase_wifi_config();
+}
+#endif
+
+
 log_item_t at_cloud_items[ ] = {
 #if CONFIG_JOYLINK
 	{"ATCJ", fATCJ,},
+	{"ATJM", fATJM,},
 #endif
 #if CONFIG_GAGENT
 	{"ATCG", fATCG,},
@@ -163,6 +308,16 @@ log_item_t at_cloud_items[ ] = {
 	{"ATCZ", fATCZ,},
 	{"ATCT", fATCT,},
 #endif
+
+#if CONFIG_GREE
+	{"ATCR", fATCR,},
+#endif
+
+#if (defined(CONFIG_RIC) && CONFIG_RIC)
+	{"ATCR", fATCR,},
+	{"ATUS", fATUS,},
+#endif
+
 	{"ATC?", fATCx,},
 };
 void at_cloud_init(void)

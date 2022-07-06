@@ -14,9 +14,9 @@ typedef struct
 	u32 Polarity; /* 1 is high, 0 is low */
 } WAKEPIN_TypeDef;
 
-extern const PWRCFG_TypeDef sleep_pwrmgt_config[];
-extern const PWRCFG_TypeDef sleep_wevent_config[];
-extern const WAKEPIN_TypeDef sleep_wakepin_config[];
+extern PWRCFG_TypeDef sleep_pwrmgt_config[];
+extern PWRCFG_TypeDef sleep_wevent_config[];
+extern WAKEPIN_TypeDef sleep_wakepin_config[];
 
 extern const PWRCFG_TypeDef dstandby_wevent_config[];
 extern const WAKEPIN_TypeDef dstandby_wakepin_config[];

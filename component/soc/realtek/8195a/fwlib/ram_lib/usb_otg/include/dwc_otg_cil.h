@@ -223,6 +223,8 @@ typedef struct dwc_ep {
 	/** Data size for regular frame */
 	uint32_t data_per_frame;
 
+    uint32_t data_per_frame1;
+
 	/* todo - pattern data support is to be implemented in the future */
 	/** Data size for pattern frame */
 	uint32_t data_pattern_frame;
@@ -230,7 +232,7 @@ typedef struct dwc_ep {
 	uint32_t sync_frame;
 
 	/** bInterval */
-	uint32_t bInterval;
+	//uint32_t bInterval;
 	/** ISO Packet number per frame */
 	uint32_t pkt_per_frm;
 	/** Next frame num for which will be setup DMA Desc */

@@ -26,6 +26,7 @@ int wext_set_pmk_cache_enable(const char *ifname, __u8 value);
 #endif
 int wext_set_key_ext(const char *ifname, __u16 alg, const __u8 *addr, int key_idx, int set_tx, const __u8 *seq, __u16 seq_len, __u8 *key, __u16 key_len);
 int wext_get_enc_ext(const char *ifname, __u16 *alg, __u8 *key_idx, __u8 *passphrase);
+int wext_get_auth_type(const char *ifname, __u32 *auth_type);
 int wext_set_passphrase(const char *ifname, const __u8 *passphrase, __u16 passphrase_len);
 int wext_get_passphrase(const char *ifname, __u8 *passphrase);
 int wext_set_mode(const char *ifname, int mode);
@@ -90,11 +91,22 @@ int wext_get_retry_drop_num(const char *ifname, rtw_fw_retry_drop_t * retry);
 int wext_get_sw_trx_statistics(const char *ifname, rtw_net_device_stats_t *stats);
 void wext_set_indicate_mgnt(int enable);
 void wext_set_lowrssi_use_b(int enable,int rssi);
+#ifndef CONFIG_MCC_STA_AP_MODE
+int wext_get_RxInfo(const char *ifname, __u8* BeaconCnt, int *rssi, __u8* CurIGValue, __u32* Fa_Ofdm_count, __u32* Fa_Cck_count);
+int wext_get_RxCrcInfo(const char *ifname, __u32* CCK_Crc_Fail, __u32* CCK_Crc_OK, __u32* OFDM_Crc_Fail, __u32* OFDM_Crc_OK, __u32* HT_Crc_Fail, __u32* HT_Crc_OK);
+int wext_get_TxInfo(const char *ifname, __u32 *tx_ok, __u32 *tx_retry, __u32 *tx_drop);
+int wext_get_PSInfo(const char *ifname, __u32* tim_wake_up_count);
+#endif
 #ifdef CONFIG_SYNCPKT
 int wext_set_syncpkt_da(const char *ifname, __u8 *da);
 int wext_send_syncpkt(const char *ifname, __u8 flag, __u8 pktnum, __u8 interval);
 int wext_disable_fw_ips(const char *ifname, __u8 enable);
 #endif
+int wext_set_adaptivity_enable(const char *ifname, __u8 value);
+__u8 wext_get_adaptivity_enable(const char *ifname);
+int wext_set_adaptivity_mode(const char *ifname, __u8 mode);
+__u8 wext_get_adaptivity_mode(const char *ifname);
+__u8 wext_get_channel_plan(const char *ifname);
 #ifdef	__cplusplus
 }
 #endif

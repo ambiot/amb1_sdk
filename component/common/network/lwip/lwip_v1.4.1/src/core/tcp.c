@@ -53,6 +53,10 @@
 #include "lwip/debug.h"
 #include "lwip/stats.h"
 
+#ifdef LWIP_HOOK_TCP_ISN
+#include <tcp_isn.h>
+#endif
+
 #include <string.h>
 
 #ifndef TCP_LOCAL_PORT_RANGE_START
@@ -668,6 +672,25 @@ again:
   return tcp_port;
 }
 
+/* Added by Realtek start */
+#if LWIP_RANDOMIZE_INITIAL_LOCAL_PORTS
+/**
+ * Randomize a new local TCP port once.
+ */
+void 
+tcp_randomize_local_port(void)
+{
+  static int done = 0;
+
+  if (!done) {
+    done = 1;    
+    LWIP_SRAND();
+    tcp_port = LWIP_RAND() % (TCP_LOCAL_PORT_RANGE_END - TCP_LOCAL_PORT_RANGE_START) + TCP_LOCAL_PORT_RANGE_START;
+  }
+}
+#endif  /* LWIP_RANDOMIZE_INITIAL_LOCAL_PORTS */
+/* Added by Realtek end */
+
 /**
  * Connects to another host. The function given as the "connected"
  * argument will be called when the connection has been established.
@@ -738,7 +761,7 @@ tcp_connect(struct tcp_pcb *pcb, ip_addr_t *ipaddr, u16_t port,
     }
   }
 #endif /* SO_REUSE */
-  iss = tcp_next_iss();
+  iss = tcp_next_iss(pcb);
   pcb->rcv_nxt = 0;
   pcb->snd_nxt = iss;
   pcb->lastack = iss - 1;
@@ -877,16 +900,16 @@ tcp_slowtmr_start:
         }
       }
     }
-    /* Check if this PCB has stayed too long in FIN-WAIT-2 */
-    if (pcb->state == FIN_WAIT_2) {
-      /* If this PCB is in FIN_WAIT_2 because of SHUT_WR don't let it time out. */
+    /* Check if this PCB has stayed too long in FIN_WAIT_1 or FIN-WAIT-2 */
+    if (pcb->state == FIN_WAIT_1 || pcb->state == FIN_WAIT_2) {
+      /* If this PCB is FIN_WAIT_1 or in FIN_WAIT_2 because of SHUT_WR don't let it time out. */
       if (pcb->flags & TF_RXCLOSED) {
         /* PCB was fully closed (either through close() or SHUT_RDWR):
            normal FIN-WAIT timeout handling. */
         if ((u32_t)(tcp_ticks - pcb->tmr) >
             TCP_FIN_WAIT_TIMEOUT / TCP_SLOW_INTERVAL) {
           ++pcb_remove;
-          LWIP_DEBUGF(TCP_DEBUG, ("tcp_slowtmr: removing pcb stuck in FIN-WAIT-2\n"));
+          LWIP_DEBUGF(TCP_DEBUG, ("tcp_slowtmr: removing pcb stuck in FIN_WAIT_1 or FIN-WAIT-2\n"));
         }
       }
     }
@@ -1321,7 +1344,7 @@ tcp_alloc(u8_t prio)
     pcb->sv = 3000 / TCP_SLOW_INTERVAL;
     pcb->rtime = -1;
     pcb->cwnd = 1;
-    iss = tcp_next_iss();
+    iss = tcp_next_iss(pcb);
     pcb->snd_wl2 = iss;
     pcb->snd_nxt = iss;
     pcb->lastack = iss;
@@ -1569,13 +1592,36 @@ tcp_pcb_remove(struct tcp_pcb **pcblist, struct tcp_pcb *pcb)
  * @return u32_t pseudo random sequence number
  */
 u32_t
-tcp_next_iss(void)
+tcp_next_iss(struct tcp_pcb *pcb)
 {
+#ifdef LWIP_HOOK_TCP_ISN
+	tcp_isn_init();
+  return LWIP_HOOK_TCP_ISN(&pcb->local_ip, pcb->local_port, &pcb->remote_ip, pcb->remote_port);
+#else /* LWIP_HOOK_TCP_ISN */
   static u32_t iss = 6510;
-  
+
+  LWIP_UNUSED_ARG(pcb);
+
   iss += tcp_ticks;       /* XXX */
   return iss;
+#endif /* LWIP_HOOK_TCP_ISN */
 }
+
+#ifdef LWIP_HOOK_TCP_ISN
+void tcp_isn_init(void)
+{
+	// Seed lwip random
+    LWIP_SRAND();
+	//printf("seed: %d\r\n", sys_now());
+	// Initialise TCP sequence number
+	uint32_t tcp_isn_secret[4];
+	for (int i = 0; i < 4; i++) {
+		tcp_isn_secret[i] = LWIP_RAND();
+		//printf("tcp_isn_secret: %d\r\n", tcp_isn_secret[i]);
+	}
+	lwip_init_tcp_isn( (sys_now()/configTICK_RATE_HZ) , (u8_t *) &tcp_isn_secret); //The unit of first parameter is second.
+}
+#endif
 
 #if TCP_CALCULATE_EFF_SEND_MSS
 /**

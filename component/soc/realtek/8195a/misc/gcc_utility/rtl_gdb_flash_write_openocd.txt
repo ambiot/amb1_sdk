@@ -119,19 +119,19 @@ set $FILEENDADDR = $FILESTARTADDR + $FLASHDATBUFSIZE
 
 #b RtlFlashProgram:StartOfFlashBlockWrite
 b rtl_flash_download.c:489
-b rtl_flash_download.c:524
+b rtl_flash_download.c:546
 #b Rtl_flash_control.c:RtlFlashProgram
 
 #continue to 489
 c
 
 # Mode 0: erase full chip, Mode 1: skip calibration section and erase to firmware size
-set EraseMode=1
+set EraseMode=2
 print EraseMode
 set FirmwareSize=$RamFileSize
 print FirmwareSize
 
-#continue to 524
+#continue to 546
 c
 
 #printf "...\n"
@@ -152,7 +152,7 @@ printf  "Flash write start...\n"
 set $LoopCnt = 0
 while  ($LoopCnt < $LoopNum)
 	p /x FlashAddrForWrite
-    restore ./application/Debug/bin/ram_all.bin binary ($FLASHDATSRC-$FILESTARTADDR) $FILESTARTADDR $FILEENDADDR
+    restore ./application/Debug/bin/ram_all.ns.bin binary ($FLASHDATSRC-$FILESTARTADDR) $FILESTARTADDR $FILEENDADDR
     c
     
     printf "FILEENDADDR"
@@ -168,9 +168,14 @@ end
 #set FlashBlockWriteSize = $FLASHDATBUFSIZE
 #set FlashAddrForWrite = $FILEENDADDR
 #set $FILESTARTADDR = $FILEENDADDR
-set $FILEENDADDR = $FILESTARTADDR + $TailSize
-restore ./application/Debug/bin/ram_all.bin binary ($FLASHDATSRC-$FILESTARTADDR) $FILESTARTADDR $FILEENDADDR
-c
+if ($TailSize > 0)
+    set $FILEENDADDR = $FILESTARTADDR + $TailSize
+    restore ./application/Debug/bin/ram_all.ns.bin binary ($FLASHDATSRC-$FILESTARTADDR) $FILESTARTADDR $FILEENDADDR
+    c
+end
+
+# append image1 signature
+set {int}0x98000034=0x88167923
 
 #Set complete flas
 set FlashWriteComplete = 0x1
@@ -190,7 +195,7 @@ dump binary memory  ./application/Debug/bin/dump.bin $dumpstartaddr $dumpendaddr
 
 
 delete
-b rtl_flash_download.c:556
+b rtl_flash_download.c:578
 c
 
 quit

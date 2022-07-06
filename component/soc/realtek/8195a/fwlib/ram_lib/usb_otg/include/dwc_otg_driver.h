@@ -120,5 +120,8 @@ typedef struct _DWC_OTG_ADAPTER_ {
 }DWC_OTG_ADAPTER, *PDWC_OTG_ADAPTER;
 void dwc_otg_disable_irq(IN VOID);
 void dwc_otg_enable_irq(IN VOID);
+int usb_hcd_post_init(void);
+int dwc_otg_driver_remove_common(VOID);
+int dwc_otg_boot_deinit(void);
 
 #endif

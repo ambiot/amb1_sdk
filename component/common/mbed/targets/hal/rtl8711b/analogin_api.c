@@ -66,8 +66,8 @@ void ADC_ReceiveBuf_ACUT(u32 *pBuf)
 	while (1) {
 		isr = ADC_GetISR();
 		if (isr & (BIT_ADC_FIFO_FULL | BIT_ADC_FIFO_RD_REQ)) {
-			*pBuf = (u32)ADC_Read();
-			*(pBuf+1)= (u32)ADC_Read();
+			*pBuf = (u32)ADC_Read_RAM();
+			*(pBuf+1)= (u32)ADC_Read_RAM();
 
 			ADC_INTClear();
 			ADC_INTConfig(BIT_ADC_FIFO_FULL_EN|BIT_ADC_FIFO_RD_REQ_EN, DISABLE);

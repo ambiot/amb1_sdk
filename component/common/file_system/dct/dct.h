@@ -52,7 +52,8 @@ enum{
 typedef struct _dct_handle_t{
 	uint32_t	module_state;						/*!< the module state */
 	uint8_t		module_name[MODULE_NAME_SIZE+1];	/*!< the module name */
-	uint8_t		module_idx;							/*!< the module index */
+	uint16_t	module_idx;							/*!< the module index */
+	uint16_t	block_idx;							/*!< the block index */
 	uint16_t	used_variable_num;					/*!< the number of variable had used */
 	uint32_t	variable_crc;						/*!< the crc of all variables */
 	uint8_t		cache_dirty;						/*!< the dirty flag of cache */
@@ -66,18 +67,24 @@ typedef struct _dct_handle_t{
  * @param[in]  variable_name_size : size of variable name
  * @param[in]  variable_value_size : size of variable size
  * @param[in]  enable_backup : enable backup function to backup module, it need double module size
+ * @param[in]  enable_wear_leveling : enable wear leveling function, it need sextuple module size
  * @return     0  : SUCCESS
  * @return     <0 : ERROR
  */
-int32_t dct_format(uint32_t begin_address, uint16_t module_number, uint16_t variable_name_size, uint16_t variable_value_size, uint8_t enable_backup);
+int32_t dct_format(uint32_t begin_address, uint16_t module_number, uint16_t variable_name_size, uint16_t variable_value_size, uint8_t enable_backup, uint8_t enable_wear_leveling);
 
 /**
  * @brief      Initialize device configuration table.
  * @param[in]  begin_address : DCT begin address of flash
+ * @param[in]  module_number : total module number
+ * @param[in]  variable_name_size : size of variable name
+ * @param[in]  variable_value_size : size of variable size
+ * @param[in]  enable_backup : enable backup function to backup module, it need double module size
+ * @param[in]  enable_wear_leveling : enable wear leveling function, it need sextuple module size
  * @return     0  : SUCCESS
  * @return     <0 : ERROR
  */
-int32_t dct_init(uint32_t begin_address);
+int32_t dct_init(uint32_t begin_address, uint16_t module_number, uint16_t variable_name_size, uint16_t variable_value_size, uint8_t enable_backup, uint8_t enable_wear_leveling);
 
 /**
  * @brief      Deinitialize device configuration table.

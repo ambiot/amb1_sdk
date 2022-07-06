@@ -80,7 +80,7 @@ typedef struct {
 /**************************************************************************
  * Data Structure for Descriptor
  **************************************************************************/
-#define _LITTLE_ENDIAN
+#define _LITTLE_ENDIAN_
 
 #if (SYSTEM_ENDIAN==PLATFORM_LITTLE_ENDIAN)
 

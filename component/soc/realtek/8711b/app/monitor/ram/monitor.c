@@ -74,7 +74,7 @@ CmdTickPS(
 	}
 
 	if (_strcmp(argv[0], "get") == 0){// get sleep & wake time
-		pmu_get_wakelock_hold_stats(NULL);
+		pmu_get_wakelock_hold_stats(NULL,0);
 	}
 
 	if (_strcmp(argv[0], "clear") == 0){// clear sleep & wake time

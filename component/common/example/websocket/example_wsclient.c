@@ -8,20 +8,23 @@
 #include <stdio.h>
 #include "example_wsclient.h"
 
-void handle_message(wsclient_context *wsclient, int data_len)
+void handle_message(wsclient_context **wsclient, int data_len)
 {
-        printf("\r\n>>>>>> Receiving: %s with length: %d\n", wsclient->receivedData, data_len);
+	wsclient_context *wsc = *wsclient;
+	printf("\r\n>>>>>> Receiving: %s with length: %d\n", wsc->receivedData, data_len);
 
-	if(strcmp(wsclient->receivedData, "hello") == 0)
-		ws_send("world", strlen("world"), 1, wsclient);
-	else if (strcmp(wsclient->receivedData, "world") == 0){
+	if(strcmp((char const*)wsc->receivedData, "hello") == 0)
+		ws_send("world", strlen("world"), 1, wsc);
+	else if (strcmp((char const*)wsc->receivedData, "world") == 0){
 		ws_close(wsclient);
-		wsclient = NULL;
     }
 }
 
 static void example_wsclient_thread(void *param)
 {
+	/* To avoid gcc warnings */
+	( void ) param;
+	
   	printf("\r\n\r\n\r\n>>>>>>>>>>>>>>>wsclient example<<<<<<<<<<<<<<<<<\r\n\r\n\r\n");
 	vTaskDelay(10000);
 	while(wifi_is_ready_to_transceive(RTW_STA_INTERFACE) != RTW_SUCCESS){ 
@@ -30,7 +33,12 @@ static void example_wsclient_thread(void *param)
 	}
 
 	int ret;
-	wsclient_context *wsclient = create_wsclient("wss://echo.websocket.org", 0, NULL, NULL);
+	
+        //Please set SSL_MAX_CONTENT_LEN to 7680 for maximum input msglen 7067 Bytes
+        //wsclient_context *wsclient = create_wsclient("wss://echo.websocket.org", 0, NULL, NULL, 1500, 3);
+        
+        //Please set SSL_MAX_CONTENT_LEN to 5120 for maximum input msglen 4849 Bytes
+	wsclient_context *wsclient = create_wsclient("wss://sandbox.kaazing.net", 0, "echo", NULL, 1500, 3);
 	if(wsclient != NULL){
 
 		if(wsclient->use_ssl == 1){
@@ -42,13 +50,19 @@ static void example_wsclient_thread(void *param)
 		ret = ws_connect_url(wsclient);
 		if(ret >= 0){
 			ws_send("hello", strlen("hello"), 1, wsclient);
-			while (ws_getReadyState(wsclient) != CLOSED) {
-				ws_dispatch(handle_message);
-				ws_poll(0, wsclient);
+			ws_dispatch(handle_message);
+			while (wsclient->readyState != CLOSED){
+				
+				ws_poll(0, &wsclient);
 			}
 		}
 		else
 			printf("\r\nConnect to websocket server failed!\r\n");
+                
+		if(wsclient){
+			ws_free(wsclient);
+			wsclient = NULL;
+		}
 	}
 	else
 		printf("\r\nCreat websocket context failed!\r\n");

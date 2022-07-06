@@ -460,7 +460,11 @@ int eap_cert_setup(ssl_context *ssl)
 #include <mbedtls/ssl.h>
 #include <mbedtls/ssl_internal.h>
 
+#if CONFIG_EXAMPLE_AMAZON_FREERTOS || CONFIG_EXAMPLE_AMAZON_AFQP_TESTS
+int max_buf_bio_size = MBEDTLS_SSL_IN_BUFFER_LEN;
+#else
 int max_buf_bio_size = MBEDTLS_SSL_BUFFER_LEN;
+#endif
 
 struct eap_tls{
 	void *ssl;

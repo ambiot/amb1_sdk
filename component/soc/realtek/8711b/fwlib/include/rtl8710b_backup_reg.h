@@ -116,6 +116,7 @@ _LONG_CALL_ void BKUP_Clear(u32 DwordIdx, u32 BitMask);
  * @defgroup BKUP_REG_WDORD0
  * @{
  *****************************************************************************/
+#define BIT_SOFTWARE_RESET_HAPPEN       BIT(8)  /* this is SW set bit before reboot, for software reboot */
 #define BIT_SYS_BOR_DETECION				BIT(7)	/*!<  1: enable bor2 detection;  0: disable */
 #define BIT_BOR2_RESET_TEMP				BIT(6)	/*!<  BOR2 HW temp bit */
 #define BIT_SYS_RESET_HAPPEN				BIT(5)	/*!<  this is SW set bit before reboot, for distinguish watchdog and system reset */

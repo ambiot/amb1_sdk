@@ -195,6 +195,9 @@ void sys_adc_calibration(u8 write, u16 *offset, u16 *gain)
  */
 void sys_reset(void)
 {
+	// Set reset reason
+	HalSetResetCause(REASON_SOFT_RESTART);
+        
 	// Set processor clock to default before system reset
 	HAL_WRITE32(SYSTEM_CTRL_BASE, 0x14, 0x00000021);
 	HalDelayUs(100*1000);

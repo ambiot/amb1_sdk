@@ -33,6 +33,7 @@
 #if !defined(__DWC_CORE_IF_H__)
 #define __DWC_CORE_IF_H__
 
+#include "rtl8195a_otg.h"
 #include "dwc_os.h"
 
 /** @file
@@ -129,7 +130,12 @@ extern _LONG_CALL_ int32_t dwc_otg_get_param_dma_burst_size(dwc_otg_core_if_t * 
  */
 extern _LONG_CALL_ int dwc_otg_set_param_speed(dwc_otg_core_if_t * core_if, int32_t val);
 extern _LONG_CALL_ int32_t dwc_otg_get_param_speed(dwc_otg_core_if_t * core_if);
+#if !defined(USB_DEV_FULL_SPEED)
 #define dwc_param_speed_default 0
+#else
+#define dwc_param_speed_default 1
+#endif
+
 #define DWC_SPEED_PARAM_HIGH 0
 #define DWC_SPEED_PARAM_FULL 1
 

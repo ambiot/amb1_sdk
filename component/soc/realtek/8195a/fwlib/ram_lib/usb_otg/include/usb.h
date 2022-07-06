@@ -838,7 +838,7 @@ typedef struct wusb_m4_data {
 #define USB_ALTSETTINGALLOC		4
 #define USB_MAXALTSETTING		128	/* Hard limit */
 
-#define USB_MAX_DEVICE			3       // at least 2: 1 for the root hub device, 1 for usb device
+#define USB_MAX_DEVICE			2       // at least 2: 1 for the root hub device, 1 for usb device
 #define USB_MAXCONFIG			8
 #define USB_MAXINTERFACES		8
 #define USB_MAXENDPOINTS		16
@@ -1862,12 +1862,12 @@ static inline void usb_set_intfdata(struct usb_interface *intf, void *data)
 
 static inline struct usb_device *interface_to_usbdev(struct usb_interface *intf)
 {
-	return intf->usb_dev;
+	return (struct usb_device *)(intf->usb_dev);
 }
 
 static inline struct usb_driver *interface_to_usbdri(struct usb_interface *intf)
 {
-	return intf->driver;
+	return (struct usb_driver *)(intf->driver);
 }
 
 /*-------------------------------------------------------------------------*/
@@ -2037,6 +2037,7 @@ extern _Sema  CtrlUrbCompSema;  /* Semaphore for for Control URB Complete waitin
 extern _Sema  UrbKillSema;  /* Semaphore for for URB Kill waiting */
 #endif
 typedef unsigned long kernel_ulong_t;
+extern int usb_deinit(void);
 
 struct usb_device_id {
 	/* which fields to match against? */
@@ -2164,6 +2165,7 @@ struct usb_driver {
 	int (*post_reset)(struct usb_interface *intf);
 
 	const struct usb_device_id *id_table;
+    _list list;
 };
 
 int usb_register_class_driver(struct usb_driver *driver);

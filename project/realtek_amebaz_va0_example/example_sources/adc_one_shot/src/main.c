@@ -21,7 +21,7 @@ void adc_isr(void *Data)
 	isr = ADC_GetISR();
 	if (isr & BIT_ADC_FIFO_THRESHOLD) {
 		for(i = 0; i < 30; i++) {
-			buf[i] = (u32)ADC_Read();
+			buf[i] = (u32)ADC_Read_RAM();
 		}
 	}
 

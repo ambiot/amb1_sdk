@@ -116,6 +116,9 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}}\..\..\..\..\..\component\soc\realtek\8195a\misc\bsp\lib\common\GCC&quot;"/>
 								</option>
 								<option id="gnu.c.link.option.libs.177373024" name="Libraries (-l)" superClass="gnu.c.link.option.libs" valueType="libs">
+									<listOptionValue builtIn="false" value="_p2p"/>
+									<listOptionValue builtIn="false" value="_rtsp"/>
+									<listOptionValue builtIn="false" value="_sdcard"/>
 									<listOptionValue builtIn="false" value="_websocket"/>
 									<listOptionValue builtIn="false" value="_wlan"/>
 									<listOptionValue builtIn="false" value="_http"/>
@@ -123,6 +126,8 @@
 									<listOptionValue builtIn="false" value="_xmodem"/>
 									<listOptionValue builtIn="false" value="_platform"/>
 									<listOptionValue builtIn="false" value="_rtlstd"/>
+									<listOptionValue builtIn="false" value="_usbd"/>
+									<listOptionValue builtIn="false" value="_sdcard"/>
 									<listOptionValue builtIn="false" value="m"/>
 									<listOptionValue builtIn="false" value="c"/>
 									<listOptionValue builtIn="false" value="nosys"/>

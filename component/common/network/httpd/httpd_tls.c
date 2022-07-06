@@ -1,7 +1,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "platform_stdlib.h"
-
+#include "osdep_service.h"
 #include "httpd.h"
 
 #if (HTTPD_USE_TLS == HTTPD_TLS_POLARSSL)
@@ -45,6 +45,10 @@ static mbedtls_pk_context httpd_key; /*!< Private key of server */
 
 static int _verify_func(void *data, mbedtls_x509_crt *crt, int depth, uint32_t *flags)
 {
+	/* To avoid gcc warnings */
+	( void ) data;
+	( void ) depth;
+	
 	char buf[1024];
 	mbedtls_x509_crt_info(buf, sizeof(buf) - 1, "", crt);
 
@@ -73,6 +77,9 @@ static void* _calloc_func(size_t nmemb, size_t size)
 
 static int _random_func(void *p_rng, unsigned char *output, size_t output_len)
 {
+	/* To avoid gcc warnings */
+	( void ) p_rng;
+	
 	rtw_get_random_bytes(output, output_len);
 	return 0;
 }
@@ -362,7 +369,7 @@ int httpd_base64_encode(uint8_t *data, size_t data_len, char *base64_buf, size_t
 	int ret = 0;
 	size_t output_len = 0;
 
-	if((ret = mbedtls_base64_encode(base64_buf, buf_len, &output_len, data, data_len)) != 0) {
+	if((ret = mbedtls_base64_encode((unsigned char*)base64_buf, buf_len, &output_len, data, data_len)) != 0) {
 		printf("\n[HTTPD] ERROR: mbedtls_base64_encode %d\n", ret);
 		ret = -1;
 	}

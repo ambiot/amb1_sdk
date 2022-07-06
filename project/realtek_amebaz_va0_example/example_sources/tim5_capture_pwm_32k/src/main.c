@@ -10,7 +10,7 @@
 #include "ameba_soc.h"
 #include "main.h"
 
-#define PWM_PERIOD	40000000/32768
+#define PWM_PERIOD	(XTAL_ClkGet()/32768)
 
 u32 capture_chn = 1;
 u32 cnt = 0;
@@ -27,9 +27,9 @@ VOID tim5_capture_ISR(u32 channel)
 		cnt = 0;
 
 		if(val2 > val1)
-			DBG_8195A("frequency: %d\n", 40000000/(val2 - val1));
+			DBG_8195A("frequency: %d\n", XTAL_ClkGet()/(val2 - val1));
 		else
-			DBG_8195A("frequency: %d\n", 40000000/(PWM_PERIOD + 1 - val1 + val2));
+			DBG_8195A("frequency: %d\n", XTAL_ClkGet()/(PWM_PERIOD + 1 - val1 + val2));
 	}
 
 	RTIM_INTClear(TIM5);

@@ -10,7 +10,7 @@
 #include "ameba_soc.h"
 #include "main.h"
 
-#define PWM_PERIOD	40000000/32768
+#define PWM_PERIOD	(XTAL_ClkGet()/32768)
 
 u32 cnt = 0;
 

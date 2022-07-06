@@ -24,7 +24,7 @@ typedef struct
 
 /**
   * @brief  init system active timer for PMU.
-  * @param  none.          
+  * @param  none.
   * @retval status value:
   *          - 0: _FAIL
   *          - 1: _SUCCESS
@@ -37,8 +37,23 @@ void pmu_unregister_delay_callback(u32 nDeviceId);
 u32 pmu_exec_sleep_hook_funs(void);
 void pmu_exec_wakeup_hook_funs(u32 nDeviceIdMax);
 uint32_t pmu_set_sleep_type(uint32_t type);
-void pmu_tickless_debug(u32 NewStatus);
-void pmu_set_dev_wakeup_tick(u32 nDeviceId, u32 Ms);
+uint32_t pmu_set_delta_tick(float value);
+void pmu_yield_os_set(int yield_flag);
+#if CONFIG_LWIP_LAYER
+ extern uint32_t LWIP_Get_Dynamic_Sleep_Interval();
+#endif
+void pmu_set_broadcast_awake(u32 NewStatus);
+void pmu_set_broadcast_awake_port(u32 AwakePort);
+u32 pmu_get_broadcast_awake_port(void);
+
+/**
+  * @brief  set roaming awake or not
+  * @param  enable/threshhold:
+  			1: enable roaming awake and set the threshhold
+  			0: disable roaming awake and ignore the threshhold
+  * @retval none
+  */
+void pmu_set_roaming_awake(u8 enable, u8 threshhold);
 
 extern u32 tickless_debug;
 extern u32 tick_last_tcp;

@@ -13,6 +13,11 @@
 #include "rtl_consol.h"
 #include "strproc.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+#include <event_groups.h>
+#include "semphr.h"
+
 extern volatile UART_LOG_CTL    UartLogCtl;
 extern volatile UART_LOG_CTL    *pUartLogCtl;
 extern u8                       *ArgvArray[MAX_ARGV];
@@ -99,6 +104,13 @@ UartLogIrqHandleRam
     VOID * Data
 )
 {
+	volatile u8 reg_iir;
+	reg_iir = UART_IntStatus(UART2_DEV);
+	if ((reg_iir & RUART_IIR_INT_PEND) != 0) {
+        // No pending IRQ
+        return;
+	}
+
     u8      UartReceiveData = 0;
     //For Test
     BOOL    PullMode = _FALSE;
@@ -357,10 +369,107 @@ RtlConsolTaskRam(
 			}
 			pUartLogCtl->ExecuteCmd = _FALSE;
 
-			pmu_set_sysactive_time(PMU_CONSOL_DEVICE, 10000);
+			pmu_set_sysactive_time(10000);
 		}
 	}while(1);
 }
+
+
+//======================================================
+#if BUFFERED_PRINTF
+//print log buffer length, if buffer get full, the extra logs will be discarded.
+#define MAX_PRINTF_BUF_LEN 1024
+
+xTaskHandle print_task = NULL;
+EventGroupHandle_t print_event = NULL;
+char print_buffer[MAX_PRINTF_BUF_LEN];
+int flush_idx = 0;
+int used_length = 0;
+
+int available_space(void)
+{
+    return MAX_PRINTF_BUF_LEN-used_length;
+}
+
+int buffered_printf(const char* fmt, ...)
+{
+    if((print_task==NULL) || (print_event==NULL) )
+        return 0;
+    char tmp_buffer[UART_LOG_CMD_BUFLEN+1];
+    static int print_idx = 0;
+    int cnt;
+    va_list arglist;
+
+    if(xEventGroupGetBits(print_event)!=1)
+            xEventGroupSetBits(print_event, 1);
+
+    memset(tmp_buffer,0,UART_LOG_CMD_BUFLEN+1);
+    va_start(arglist, fmt);
+    rtl_vsnprintf(tmp_buffer, sizeof(tmp_buffer), fmt, arglist);
+    va_end(arglist);
+
+    cnt = _strlen(tmp_buffer);
+    if(cnt < available_space()){
+        if(print_idx >= flush_idx){
+            if(MAX_PRINTF_BUF_LEN-print_idx >= cnt){
+                memcpy(&print_buffer[print_idx], tmp_buffer, cnt);
+            }else{
+                memcpy(&print_buffer[print_idx], tmp_buffer, MAX_PRINTF_BUF_LEN-print_idx);
+                memcpy(&print_buffer[0], &tmp_buffer[MAX_PRINTF_BUF_LEN-print_idx], cnt-(MAX_PRINTF_BUF_LEN-print_idx));
+            }
+        }else{  // space is flush_idx - print_idx, and available space is enough
+            memcpy(&print_buffer[print_idx], tmp_buffer, cnt);
+        }
+        // protection needed
+        taskENTER_CRITICAL();
+        used_length+=cnt;
+        taskEXIT_CRITICAL();
+        print_idx+=cnt;
+        if(print_idx>=MAX_PRINTF_BUF_LEN)
+            print_idx -= MAX_PRINTF_BUF_LEN;
+    }else{
+        // skip
+        cnt = 0;
+    }
+
+    return cnt;
+}
+
+
+void printing_task(void* arg)
+{
+    while(1){
+        //wait event
+        if(xEventGroupWaitBits(print_event, 1,  pdFALSE, pdFALSE, 100 ) == 1){
+            while(used_length > 0){
+                DiagPutChar(print_buffer[flush_idx]);
+                flush_idx++;
+                if(flush_idx >= MAX_PRINTF_BUF_LEN)
+                    flush_idx-=MAX_PRINTF_BUF_LEN;
+                taskENTER_CRITICAL();
+                used_length--;
+                taskEXIT_CRITICAL();
+            }
+            // clear event
+            xEventGroupClearBits( print_event, 1);
+        }
+    }
+}
+
+void rtl_printf_init()
+{
+    if(print_event==NULL){
+        print_event = xEventGroupCreate();
+        if(print_event == NULL)
+            printf("\n\rprint event init fail!\n");
+    }
+    if(print_task == NULL){
+        if(xTaskCreate(printing_task, (const char *)"print_task", 512, NULL, tskIDLE_PRIORITY + 1, &print_task) != pdPASS)
+            printf("\n\rprint task init fail!\n");
+    }
+}
+#endif
+//======================================================
 
 /**
   * @brief    Set UartLog Baud Rate use baudrate val.
@@ -371,6 +480,8 @@ int LOGUART_SetBaud(u32 BaudRate)
 {
 	UART_INTConfig(UART2_DEV, RUART_IER_ERBI | RUART_IER_ELSI, DISABLE);
 	UART_RxCmd(UART2_DEV, DISABLE);
+
+	while (UART_Writable(UART2_DEV) == 0);
 	
 	UART_SetBaud(UART2_DEV, BaudRate);
 	
@@ -404,5 +515,7 @@ VOID ReRegisterPlatformLogUart(VOID)
 	RtlConsolInitRam((u32)ROM_STAGE,(u32)GetRamCmdNum(),(VOID*)UartLogRamCmdTable);
 #endif
 
-
+#if BUFFERED_PRINTF
+    rtl_printf_init();
+#endif
 }

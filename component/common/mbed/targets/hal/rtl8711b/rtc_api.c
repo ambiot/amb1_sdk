@@ -211,7 +211,8 @@ void rtc_write(time_t t)
 	struct tm *timeinfo = localtime(&t);
 
 	RTC_TimeTypeDef RTC_TimeStruct;
-	
+    
+    BKUP_Clear(0, BIT_RTC_RESTORE);
 	/*set time in RTC */
 	RTC_TimeStruct.RTC_H12_PMAM = RTC_H12_AM;
 	RTC_TimeStruct.RTC_Days = timeinfo->tm_yday;

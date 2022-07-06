@@ -16,7 +16,7 @@ The websocket server without SSL:
 Configuration:
 
 [platform_opts.h]
-	#define CONFIG_EXAMPLE_WEBSOCKET	1
+	#define CONFIG_EXAMPLE_WEBSOCKET_CLIENT 	1
 
 
     If using the WSS server:
@@ -25,20 +25,24 @@ Configuration:
 		#define USING_SSL
 
 	[config_rsa.h]
+		if connecting to wss://sandbox.kaazing.net
 		#define SSL_MAX_CONTENT_LEN	5120
+		or
+		if connecting to wss://echo.websocket.org
+		#define SSL_MAX_CONTENT_LEN	7680
 
 	[example_wsclient.c]
-		wsclient_context *wsclient = create_wsclient("wss://sandbox.kaazing.net", 0, "echo", NULL);
+		wsclient_context *wsclient = create_wsclient("wss://sandbox.kaazing.net", 0, "echo", NULL, 1500);
 		or
-		wsclient_context *wsclient = create_wsclient("wss://echo.websocket.org", 0, NULL, NULL);
+		wsclient_context *wsclient = create_wsclient("wss://echo.websocket.org", 0, NULL, NULL, 1500);
 
 
     If using the WS server:
 
 	[example_wsclient.c]
-		wsclient_context *wsclient = create_wsclient("ws://sandbox.kaazing.net", 0, "echo", NULL);
+		wsclient_context *wsclient = create_wsclient("ws://sandbox.kaazing.net", 0, "echo", NULL, 1500);
 		or
-		wsclient_context *wsclient = create_wsclient("ws://echo.websocket.org", 0, NULL, NULL);
+		wsclient_context *wsclient = create_wsclient("ws://echo.websocket.org", 0, NULL, NULL, 1500);
 
 
 Execution:
@@ -46,3 +50,10 @@ Can make automatical Wi-Fi connection when booting by using wlan fast connect ex
 A websocket client example thread will be started automatically when booting.
 If using other websocekt server, modify the create_wsclient() API and the handle_message() function depending on the condition of the server.
 
+
+Note : 
+AmebaPro doesn't support polarssl, only support mbedtls.
+
+[Supported List]
+	Supported :
+	    Ameba-1, Ameba-z, Ameba-pro

@@ -94,3 +94,6 @@ The currently argument options are:
     "S6" for wlan scenario case 6: (Check scanned AP's RSSI, also can refer ATWS)
         Enable Wi-Fi with STA mode
         -> Scan network and handle the RSSI value (in dBm)
+[Supported List]
+	Supported :
+	    Ameba-1, Ameba-z, Ameba-pro, Ameba-z2

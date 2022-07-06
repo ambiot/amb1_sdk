@@ -145,6 +145,10 @@ void APP_Start(void)
 	APP_StartMbed();
 #else
 
+#ifdef CONFIG_PINMAP_ENABLE
+	PMAP_Init();
+#endif
+
 #if 0//def CONFIG_APP_DEMO
 #ifdef PLATFORM_FREERTOS
 	xTaskCreate( (TaskFunction_t)main, "MAIN_APP__TASK", (2048 /4), (void *)NULL, (tskIDLE_PRIORITY + 1), NULL);

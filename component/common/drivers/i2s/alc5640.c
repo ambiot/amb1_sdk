@@ -7,9 +7,12 @@
 
 #include "i2c_api.h"
 #include "pinmap.h"
+#include <platform/platform_stdlib.h>
 
 //#define I2C_MTR_SDA			PC_4//PB_3
 //#define I2C_MTR_SCL			PC_5//PB_2
+//#define I2C_MTR_SDA			PB_3
+//#define I2C_MTR_SCL			PB_2
 #if defined(CONFIG_PLATFORM_8195A)
 	#define I2C_MTR_SDA			PB_3
 	#define I2C_MTR_SCL			PB_2
@@ -17,6 +20,7 @@
 	#define I2C_MTR_SDA			PA_30
 	#define I2C_MTR_SCL			PA_29
 #endif 
+
 #define I2C_BUS_CLK			100000  //hz
 
 #define I2C_ALC5640_ADDR	(0x38/2)
@@ -135,10 +139,10 @@ void alc5640_init_interface1(void)
 {
     // I2S1 -> DAC -> SPK R/L
     alc5640_reg_write(0x00,0x0021);
-    alc5640_reg_write(0xD9,0x0009);
+    alc5640_reg_write(0xD9,0x0009); 
     alc5640_reg_write(0x73,0x0014);
-    alc5640_reg_write(0xFA,0x3401);
-    alc5640_index_write(0x1C,0x0D21);
+    alc5640_reg_write(0xFA,0x3C01);
+    alc5640_index_write(0x1C,0x0D21); 
     alc5640_reg_write(0x63,0xA8F0);
     wait_ms(100);  // delay 100 ms.
     alc5640_reg_write(0x63,0xE8F8);
@@ -149,7 +153,43 @@ void alc5640_init_interface1(void)
     alc5640_reg_write(0x48,0xB800);
     alc5640_reg_write(0x49,0x1800);
     alc5640_reg_write(0x01,0x4848);
+    alc5640_reg_write(0xD9,0x0809);
+    // below for hp output, DAC1-HPO (Direct Out)  
+    alc5640_reg_write(0x45,0xa000);
+    alc5640_reg_write(0x8E,0x0019);
+    alc5640_reg_write(0x8F,0x3100);
+    alc5640_reg_write(0x02,0x4848);
+}
+
+void alc5640_init_interface1_pcm(void)
+{
+    // pcm -> DAC -> SPK R/L
+    alc5640_reg_write(0x00,0x0021);
+    alc5640_reg_write(0xD9,0x0009);
+    alc5640_reg_write(0x73,0x0014);
+    alc5640_reg_write(0x70,0x8002);
+    alc5640_reg_write(0xFA,0x3C01);
+    alc5640_index_write(0x1C,0x0D21);
+    alc5640_reg_write(0x63,0xA8F0);
+    wait_ms(100);  // delay 100 ms.
+    alc5640_reg_write(0x63,0xE8F8);
+    alc5640_reg_write(0x61,0x9801);
+    alc5640_reg_write(0x64,0x0200);
+    alc5640_index_write(0x3D,0x2600);
+    alc5640_index_write(0x1C,0xFD21);
+    alc5640_reg_write(0x2A,0x1414);
+    alc5640_reg_write(0x48,0xB800);
+    alc5640_reg_write(0x49,0x1800);
+    alc5640_reg_write(0x01,0x4848);
     alc5640_reg_write(0xD9,0x0809);  
+    alc5640_reg_write(0x80,0x5000);  
+    alc5640_reg_write(0x81,0x0D9B);  
+    alc5640_reg_write(0x82,0x0800);
+    // below for hp output, DAC1-HPO (Direct Out)  
+    alc5640_reg_write(0x45,0xa000);
+    alc5640_reg_write(0x8E,0x0019);
+    alc5640_reg_write(0x8F,0x3100);
+    alc5640_reg_write(0x02,0x4848);
 }
 
 void alc5640_init_interface2(void)

@@ -248,8 +248,12 @@ extern void vPortFree( void *pv );
 //
 extern void *pvPortMalloc( size_t xWantedSize );
 extern void vPortFree( void *pv );
+extern void* pvPortReAlloc( void *pv,  size_t xWantedSize );
+
 #define malloc                  pvPortMalloc
 #define free                    vPortFree
+#define realloc                 pvPortReAlloc
+
 #elif defined(USE_STM322xG_EVAL) || defined(USE_STM324xG_EVAL)  || defined(STM32F10X_XL) 
   #include <stdio.h>
   #include <stdlib.h>

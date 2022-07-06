@@ -65,8 +65,8 @@ extern VOID SpicWaitWipDoneRefinedRtl8195A(SPIC_INIT_PARA SpicInitPara);
 
 FWU_TEXT_SECTION void FWU_WriteWord(u32 Addr, u32 FData)
 {
-    SPIC_INIT_PARA SpicInitPara;
-    
+    SPIC_INIT_PARA SpicInitPara = {0};
+
     HAL_WRITE32(SPI_FLASH_BASE, Addr, FData);
     // Wait spic busy done
     SpicWaitBusyDoneRtl8195A();
@@ -311,7 +311,7 @@ void OTU_FW_Update(u8 uart_idx, u8 pin_mux, u32 baud_rate)
 {
     u32 wr_len;
     u32 OldImage2Addr=0;  // the addr of the image2 will become old one
-    SPIC_INIT_PARA SpicInitPara;
+    SPIC_INIT_PARA SpicInitPara = {0};
 
     fw_img1_size = 0;
     fw_img2_size = 0;
@@ -694,6 +694,11 @@ void OTU_FW_Update(u8 uart_idx, u8 pin_mux, u32 baud_rate)
 	size = 0;
 
 	printf("FW Update Over UART%d, PinMux=%d, Baud=%d\r\n", uart_idx, pin_mux, baud_rate);
+    // Baud rate setting is used by UART_SetBaud,not serial_baud. Baud rate setting cannot be successful when LOW_POWER_RX_ENABLE
+	if(uart_config[0].LOW_POWER_RX_ENABLE){
+	  UART_LPRxpathSet(UART0_DEV, DISABLE);
+	  UART_LPRxIPClockSet(UART0_DEV, UART_RX_CLK_XTAL_40M);
+	}
 	// Start to update the Image2 through xModem on peripheral device
 	// We update the image via xModem on UART now, if we want to use other peripheral device
 	// to update the image then we need to redefine the API
@@ -715,6 +720,11 @@ void OTU_FW_Update(u8 uart_idx, u8 pin_mux, u32 baud_rate)
 
 	if(!ret)
 		printf("\n\rOTU_FW_Update Success");
+	
+	if(uart_config[0].LOW_POWER_RX_ENABLE){
+	  UART_LPRxpathSet(UART0_DEV, ENABLE);
+	  UART_LPRxIPClockSet(UART0_DEV, UART_RX_CLK_OSC_8M);
+	}
 	
 	printf("\n\rOTU_FW_Update Done, Write Len=%d\n", wr_len);
 }

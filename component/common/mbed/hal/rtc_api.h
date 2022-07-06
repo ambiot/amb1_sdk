@@ -38,8 +38,11 @@ extern "C" {
  *  @{
  */
 
-#if CONFIG_PLATFORM_8711B
-///@name AmebaZ Only 
+#if (defined(CONFIG_PLATFORM_8711B) && (CONFIG_PLATFORM_8711B == 1)) || \
+	(defined(CONFIG_PLATFORM_8195BLP) && (CONFIG_PLATFORM_8195BLP == 1)) || \
+	(defined(CONFIG_PLATFORM_8721D) && (CONFIG_PLATFORM_8721D == 1)) || \
+	(defined(CONFIG_PLATFORM_8710C) && (CONFIG_PLATFORM_8710C == 1))
+///@name AmebaZ and AmebaPro and AmebaD and AmebaZ2
 ///@{
 typedef void (*alarm_irq_handler)(void);
 
@@ -52,7 +55,7 @@ struct alarm_s {
 
 typedef struct alarm_s alarm_t;
 ///@}
-#endif //CONFIG_PLATFORM_8711B
+#endif //CONFIG_PLATFORM_8711B || CONFIG_PLATFORM_8195BLP || CONFIG_PLATFORM_8721D || CONFIG_PLATFORM_8710C
 
 ///@name Ameba Common
 ///@{
@@ -94,9 +97,12 @@ time_t rtc_read(void);
 void rtc_write(time_t t);
 
 ///@}
+#if (defined(CONFIG_PLATFORM_8711B) && (CONFIG_PLATFORM_8711B == 1)) || \
+	(defined(CONFIG_PLATFORM_8195BLP) && (CONFIG_PLATFORM_8195BLP == 1)) || \
+	(defined(CONFIG_PLATFORM_8721D) && (CONFIG_PLATFORM_8721D == 1)) || \
+	(defined(CONFIG_PLATFORM_8710C) && (CONFIG_PLATFORM_8710C == 1))
 
-#if CONFIG_PLATFORM_8711B
-///@name AmebaZ Only 
+///@name AmebaZ and AmebaPro
 ///@{
 /**
   * @brief  Set the specified RTC Alarm and interrupt.
@@ -115,7 +121,7 @@ u32 rtc_set_alarm(alarm_t *alrm, alarm_irq_handler alarmHandler);
   */
 void rtc_disable_alarm(void);
 ///@}
-#endif //CONFIG_PLATFORM_8711B
+#endif //CONFIG_PLATFORM_8711B || CONFIG_PLATFORM_8195BLP || CONFIG_PLATFORM_8721D || CONFIG_PLATFORM_8710C
 
 /*\@}*/
 

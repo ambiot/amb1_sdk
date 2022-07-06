@@ -126,11 +126,9 @@ retry:
 			while (1) {
 				isr = ADC_GetISR();
 				if (isr & (BIT_ADC_FIFO_FULL | BIT_ADC_FIFO_RD_REQ)) {
+					ADC_INTClear();
 					adc_tmp = ADC_Read();
 					ADC_Read();
-
-					ADC_INTClear();
-					ADC_INTConfig(BIT_ADC_FIFO_FULL_EN|BIT_ADC_FIFO_RD_REQ_EN, DISABLE);
 
 					break;
 				}
@@ -144,6 +142,7 @@ retry:
 		
 		random[i] = random_tmp;
 	}
+	ADC_INTConfig(BIT_ADC_FIFO_FULL_EN|BIT_ADC_FIFO_RD_REQ_EN, DISABLE);
 
 	/* B CUT ADD patch for reset fail */
 	AdcTempDat = adc->ANAPAR_AD1;
@@ -159,3 +158,23 @@ retry:
 	return *(u32*)random;
 }
 
+/**
+  * @brief  get the state of rdp, enable or disable
+  * @retval : This parameter can be one of the following values:
+  *            @arg TRUE: rdp is enable
+  *            @arg FALSE: rdp is disable
+  */
+u32 IsRDPenabled(void)
+{
+	u32 temp = 0;
+
+	RDP_EN_Request();
+	temp = HAL_READ32(SYSTEM_CTRL_BASE, REG_FW_PPROTECT_KEY_CTRL);
+
+	if(temp & BIT_RDP_EN){
+		return TRUE;
+	}else{
+		return FALSE;
+	}
+
+}

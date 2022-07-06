@@ -35,6 +35,13 @@
 
 #ifdef RTL_HW_CRYPTO
 #include <hal_crypto.h>
+// fix 8710b name conflict
+#ifdef S1
+#undef S1
+#endif
+#ifdef S2
+#undef S2
+#endif
 #endif
 
 #if defined(MBEDTLS_SSL_TLS_C)

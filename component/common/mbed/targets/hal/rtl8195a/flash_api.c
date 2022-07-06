@@ -32,11 +32,10 @@ static int isinit = 0;
 static flash_t flashobj;
     
 static void flash_init(flash_t * obj);
-static void flash_turnon();
+static void flash_turnon(void);
 /**
   * global data structure
   */   
-//flash_t	        flash;
 
 /**
   * @brief  Control the flash chip write protect enable/disable
@@ -69,7 +68,7 @@ void flash_init(flash_t *obj)
 	if (!SpicFlashInitRtl8195A(SpicOneBitMode)){
 
 		DBG_8195A("SPI Init Fail!!!!!!\n");
-		HAL_WRITE32(SYSTEM_CTRL_BASE, REG_SYS_DSTBY_INFO3, HAL_READ32(SYSTEM_CTRL_BASE, REG_SYS_DSTBY_INFO3)|0xf);
+		HAL_WRITE32(SYSTEM_CTRL_BASE, REG_SYS_DSTBY_INFO3, (HAL_READ32(SYSTEM_CTRL_BASE, REG_SYS_DSTBY_INFO3) | 0xf));
 	}
 	else {
 		isinit = 1;
@@ -77,16 +76,8 @@ void flash_init(flash_t *obj)
     flashobj.SpicInitPara.flashtype = SpicInitParaAllClk[0][0].flashtype;
     
     //DBG_8195A("Flash ID is = %x %x %x \n",SpicInitParaAllClk[0][0].id[0],SpicInitParaAllClk[0][0].id[1],SpicInitParaAllClk[0][0].id[2]);
-
 }
 
-/**
-  * @brief  Get flash ID (command: 0x9F). 
-  * @param  obj: Flash object define in application software.
-  * @param  buf: Pointer to a byte array to save the readback ID.
-  * @param  len: Specifies the length of the buf. It should be 3.
-  * @retval -1: Fail.
-  */
 int flash_read_id(flash_t *obj, uint8_t *buf, uint8_t len)
 {
     int index = 0;
@@ -110,22 +101,12 @@ int flash_read_id(flash_t *obj, uint8_t *buf, uint8_t len)
         DBG_8195A("Invalid ID\n");
         return -1;
     }
-    
-    len = 3;
+
     return len;   
 }
 
-/**
-  * @brief  This function is only for Winbond flash to get unique ID (command: 0x4B).
-  * @param  obj: Flash object define in application software.
-  * @param  buf: Pointer to a byte array to save the readback unique ID.
-  * @param  len: Specifies the length of the buf. It should be 8.
-  * @retval -1: Fail.
-  */
 int flash_read_unique_id(flash_t *obj, uint8_t *buf, uint8_t len)
-{
-    int index = 0;
-    
+{    
     flash_turnon();
 
     if(isinit == 0)
@@ -147,12 +128,10 @@ int flash_read_unique_id(flash_t *obj, uint8_t *buf, uint8_t len)
         //DBG_8195A("buf[%d] = %x\n",index,buf[index]);
     //}
 
-    len = 8;
     return len;
-
 }
 
-void flash_turnon()
+void flash_turnon(void)
 {
     SPI_FLASH_PIN_FCTRL(ON);  
     SpicWaitBusyDoneRtl8195A();
@@ -338,6 +317,10 @@ int  flash_stream_write(flash_t *obj, uint32_t address, uint32_t len, uint8_t * 
     uint8_t *ptr;
     uint8_t *pbuf;
     u8 flashtype = 0; 
+
+    if (len == 0) {
+        return 1;
+    }
     
     flash_turnon();
 
@@ -463,6 +446,10 @@ int flash_burst_write(flash_t *obj, uint32_t address ,uint32_t Length, uint8_t *
     u32 PageSize;
     u8 flashtype = 0;
 
+    if (Length == 0) {
+        return 1;
+    }
+    
     PageSize = 256;
 
     flash_turnon();
@@ -646,4 +633,135 @@ int flash_get_extend_addr(flash_t *obj)
 
 }
 
+/***********************************************************************************
+The following functions are compatile with Winbond flash only. 
+But not all Winbond flash supports these functions,
+plase refer to data sheets of the target flashes.
+************************************************************************************/
+/*
+0: Set status register 1 to enble write protect feature
+1: Enable individual sector / block protect feature
+*/
+void flash_set_lock_mode(uint32_t mode)
+{
+    flash_turnon();
 
+    if(isinit == 0)
+        flash_init(&flashobj);
+
+    SpicSetLockModeRtl8195A(mode);
+    SpicDisableRtl8195A();
+}
+
+/*Lock whole flash chip*/
+void flash_global_lock(void)
+{
+    flash_turnon();
+
+    if(isinit == 0)
+        flash_init(&flashobj);
+
+    SpicLockFlashRtl8195A();
+    SpicDisableRtl8195A();
+}
+
+/*Unlock whole flash chip*/
+void flash_global_unlock(void)
+{
+    flash_turnon();
+
+    if(isinit == 0)
+        flash_init(&flashobj);
+
+    SpicUnlockFlashRtl8195A();
+    SpicDisableRtl8195A();
+}
+
+/*Lock individual sector or block region, should refer to the datasheet for more details*/
+void flash_individual_lock(uint32_t address)
+{
+    flash_turnon();
+
+    if(isinit == 0)
+        flash_init(&flashobj);
+
+    SpicSingleLockRtl8195A(address);
+    SpicDisableRtl8195A();
+}
+
+/*Unlock individual sector or block region, should refer to the datasheet for more details*/
+void flash_individual_unlock(uint32_t address)
+{
+    flash_turnon();
+
+    if(isinit == 0)
+        flash_init(&flashobj);
+
+    SpicSingleUnlockRtl8195A(address);
+    SpicDisableRtl8195A();
+}
+
+/*
+1: the target sector/block is locked
+0: the target sector/block is not locked
+*/
+int flash_read_individual_lock_state(uint32_t address)
+{
+    flash_turnon();
+    int state = 0;
+
+    if(isinit == 0)
+        flash_init(&flashobj);
+
+    state = SpicReadLockStateRtl8195A(address);
+    SpicDisableRtl8195A();
+    
+    return state;
+}
+
+/*
+Some MXIC's flash supports OTP access.
+When the enter OTP command is sent,
+OTP region could be read or programmed with the same read / write commands used for flash memory array.
+The area of the OTP region depends on the flash part number.
+Please refer to flash datasheet for more details.
+*/
+void flash_mxic_enter_otp(VOID)
+{
+    flash_turnon();
+
+    if(isinit == 0)
+        flash_init(&flashobj);
+    
+    SpicEnterOtpRtl8195A();    
+    SpicDisableRtl8195A();
+}
+
+/*
+The flash returns to flash memory array access when the exit OTP command is issued.
+*/
+void flash_mxic_exit_otp(VOID)
+{
+    flash_turnon();
+
+    if(isinit == 0)
+        flash_init(&flashobj);
+    
+    SpicExitOtpRtl8195A();    
+    SpicDisableRtl8195A();
+}
+
+/*
+Whole OTP regioin cannot be updated with the OTP lock API even if some regions have not been programmed.
+*/
+void flash_mxic_lock_otp(VOID)
+{
+    flash_turnon();
+
+    if(isinit == 0)
+        flash_init(&flashobj);
+
+    SpicLockOtpRtl8195A();    
+    SpicDisableRtl8195A();
+}
+    

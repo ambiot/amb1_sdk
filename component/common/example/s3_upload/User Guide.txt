@@ -1,0 +1,27 @@
+This user guide helps you to setup download server and session token
+
+In this version of the example code, a local download server is used to demonstrate how to upload a large file by multiple parts to the AWS S3 server. Also, session token option is added for testing purpose.
+To run the demonstration, you need to setup local download server.
+To test the session token, you need to control the related macros to add the ‘x-amz-security-token’ in different positions and test all the possible combinations
+
+Setup download server (use PC as local download server)
+1)	Make sure PC and Ameba-1 are in the same network (eg. connect to the same wifi) 
+2)	Place test file in the download server by adding the test file under ‘tools\DownloadServer(HTTP)’
+3)	Open “tools\DownloadServer(HTTP)\start.bat” in notepad 
+4)	Change file path with the name of the test file (eg. image.jpg)
+5)	Run “tools\DownloadServer(HTTP)\start.bat” and wait for download request
+6)	In cmd, enter ‘ipconfig’ to see the PC’s (download server) IP address (IPv4 Address)
+7)	Open ‘example_s3_upload.c’
+8)	Set ‘DL_File_TYPE’ to the format of test file
+9)	Set ‘DL_SERVER_HOST’ to the PC’s IP address
+10)	Set ‘DL_RESOURCE’ to the name of test file
+11)	Set ‘S3_RESOURCE’ to the name to be shown in S3 server
+12)	Compile and run ‘example_s3_upload.c’
+13) Connect Ameba-1 to the same network as download server connected
+
+Setup SESSION_TOKEN (temporary security credentials)
+1)	When use session token as the credentials, set ‘SESSION_TOKEN’ as 1 in ‘example_s3_upload.c’ 
+2)	Fill in ‘S3_KEY_ID’, ‘S3_KEY_SECRET’ and ‘S3_SESSION_TOKEN’ to the temporary security credentials that obtained from AWS STS
+3)	Edit ‘ADD_IN_FORM_FIELD’, ‘ADD_IN_POLICY’ and ‘ADD_IN_REQUEST_HEADER’ to control where to add the ‘x-amz-security-token’ to.
+4)	Edit the rest of S3 server parameters (see ‘component\common\example\s3_upload\readme.txt’)
+5)	Compile and run ‘example_s3_upload.c’

@@ -5,5 +5,6 @@ void alc5640_index_dump(void);
 void alc5640_init(void);
 void alc5640_set_word_len(int len_idx);
 void alc5640_init_interface1(void);
+void alc5640_init_interface1_pcm(void);
 void alc5640_init_interface2(void);
 #endif

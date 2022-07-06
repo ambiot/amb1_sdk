@@ -1,22 +1,25 @@
-/*******************************************************************************
- * Copyright (c) 2014, 2015 IBM Corp.
- *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * and Eclipse Distribution License v1.0 which accompany this distribution.
- *
- * The Eclipse Public License is available at
- *    http://www.eclipse.org/legal/epl-v10.html
- * and the Eclipse Distribution License is available at
- *   http://www.eclipse.org/org/documents/edl-v10.php.
- *
- * Contributors:
- *    Allan Stockdill-Mander/Ian Craggs - initial API and implementation and/or initial documentation
- *    Ian Craggs - documentation and platform specific header
- *******************************************************************************/
-
+ /**
+  ******************************************************************************
+  * @file    MQTTClient.h
+  * @author
+  * @version
+  * @brief   This file provides user interface for MQTT client.
+  ******************************************************************************
+  * @attention
+  *
+  * This module is a confidential and proprietary property of RealTek and possession or use of this module requires written permission of RealTek.
+  *
+  * Copyright(c) 2016, Realtek Semiconductor Corporation. All rights reserved.
+  ****************************************************************************** 
+  */
 #if !defined(__MQTT_CLIENT_C_)
 #define __MQTT_CLIENT_C_
+
+/** @addtogroup mqtt       MQTT
+ *  @ingroup    network
+ *  @brief      MQTT client functions
+ *  @{
+ */
 
 #if defined(__cplusplus)
  extern "C" {
@@ -138,65 +141,85 @@ typedef struct MQTTClient
 
 
 /**
- * Create an MQTT client object
- * @param client
- * @param network
- * @param command_timeout_ms
- * @param
+ * @brief   Create an MQTT client object
+ * @param   client             : The context of MQTT client
+ * @param   network            : The Network context
+ * @param   command_timeout_ms : The command timeout of MQTT
+ * @param   sendbuf            : The array of MQTT send buffer
+ * @param   sendbuf_size       : The size of send buffer
+ * @param   readbuf            : The array of MQTT receive buffer
+ * @param   readbuf_size       : The size of receive buffer
+ * @return  none
  */
 DLLExport void MQTTClientInit(MQTTClient* client, Network* network, unsigned int command_timeout_ms,
 		unsigned char* sendbuf, size_t sendbuf_size, unsigned char* readbuf, size_t readbuf_size);
 
-/** MQTT Connect - send an MQTT connect packet down the network and wait for a Connack
- *  The nework object must be connected to the network endpoint before calling this
- *  @param options - connect options
- *  @return success code
+/** 
+ * @brief   Send an MQTT connect packet down the network and wait for a Connack
+ *          The nework object must be connected to the network endpoint before calling this function
+ * @param   client  c
+ * @param   options : The connect options of MQTT
+ * @return   0      : success   
+ *          -1      : failed 
  */
 DLLExport int MQTTConnect(MQTTClient* client, MQTTPacket_connectData* options);
 
-/** MQTT Publish - send an MQTT publish packet and wait for all acks to complete for all QoSs
- *  @param client - the client object to use
- *  @param topic - the topic to publish to
- *  @param message - the message to send
- *  @return success code
+/** 
+ * @brief   Send an MQTT publish packet and wait for all acks to complete for all QoSs
+ * @param   client  : The context of MQTT client
+ * @param   topic   : The MQTT topic to publish
+ * @param   message : The message to send
+ * @return   0      : success   
+ *          -1      : failed 
  */
 DLLExport int MQTTPublish(MQTTClient* client, const char*, MQTTMessage*);
 
-/** MQTT Subscribe - send an MQTT subscribe packet and wait for suback before returning.
- *  @param client - the client object to use
- *  @param topicFilter - the topic filter to subscribe to
- *  @param message - the message to send
- *  @return success code
+/** 
+ * @brief   Send an MQTT subscribe packet and wait for suback before returning.
+ * @param   client         : The context of MQTT client
+ * @param   topicFilter    : The topic filter to subscribe
+ * @param   QoS            : The MQTT QOS value
+ * @param   messageHandler : The MQTT message handler
+ * @return   0      : success   
+ *          -1      : failed 
  */
 DLLExport int MQTTSubscribe(MQTTClient* client, const char* topicFilter, enum QoS, messageHandler);
 
-/** MQTT Subscribe - send an MQTT unsubscribe packet and wait for unsuback before returning.
- *  @param client - the client object to use
- *  @param topicFilter - the topic filter to unsubscribe from
- *  @return success code
+/** 
+ * @brief   Send an MQTT unsubscribe packet and wait for unsuback before returning.
+ * @param   client         : The context of MQTT client
+ * @param   topicFilter    : The topic filter to unsubscribe
+ * @return   0      : success   
+ *          -1      : failed 
  */
 DLLExport int MQTTUnsubscribe(MQTTClient* client, const char* topicFilter);
 
-/** MQTT Disconnect - send an MQTT disconnect packet and close the connection
- *  @param client - the client object to use
- *  @return success code
+/**
+ * @brief    Send an MQTT disconnect packet and close the connection
+ * @param    client : The context of MQTT client
+ * @return   0      : success   
+ *          -1      : failed 
  */
 DLLExport int MQTTDisconnect(MQTTClient* client);
 
-/** MQTT Yield - MQTT background
- *  @param client - the client object to use
- *  @param time - the time, in milliseconds, to yield for 
- *  @return success code
+/** 
+ * @brief   MQTT receive packet background function
+ * @param   client  : The context of MQTT client
+ * @param   time    : The timeout of receive MQTT packets, in milliseconds
+ * @return   0      : success   
+ *          -1      : failed 
  */
 DLLExport int MQTTYield(MQTTClient* client, int time);
 
 #if defined(MQTT_TASK)
 void MQTTSetStatus(MQTTClient* c, int mqttstatus);
-int MQTTDataHandle(MQTTClient* c, fd_set *readfd, MQTTPacket_connectData *connectData, messageHandler messageHandler, char* address, char* topic);
+int MQTTDataHandle(MQTTClient* c, fd_set *readfd, MQTTPacket_connectData *connectData, messageHandler messageHandler, char* address, int port, char* topic);
 #endif
 
 #if defined(__cplusplus)
      }
 #endif
+
+/*\@}*/
 
 #endif

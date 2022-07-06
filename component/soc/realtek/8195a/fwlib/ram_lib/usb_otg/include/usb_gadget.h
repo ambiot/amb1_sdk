@@ -133,6 +133,44 @@ struct usb_request {
 	unsigned		actual;
 };
 
+// add for iso
+struct usb_iso_request
+{
+    void *buf0;
+    void *buf1;
+    dma_addr_t dma0;
+    dma_addr_t dma1;
+    /* Time Interval(number of frame) for data exchange, i.e, interval for calling process_buffer(==> a function). */
+    /* This variable sould be divisible to bInterval (interms of number of frames, not power of 2) */
+    uint32_t buf_proc_intrvl;
+    unsigned no_interrupt: 1;
+    unsigned zero: 1;
+    unsigned short_not_ok: 1;
+    uint32_t sync_frame;
+    uint32_t data_per_frame;
+    uint32_t data_per_frame1;
+    uint32_t data_pattern_frame;
+    uint32_t start_frame;
+    uint32_t flags;
+    void (*process_buffer)(struct usb_ep *,
+                           struct usb_iso_request *);
+    void *context;
+    int status;
+    struct usb_gadget_iso_packet_descriptor *iso_packet_desc0;
+    struct usb_gadget_iso_packet_descriptor *iso_packet_desc1;
+    uint32_t proc_buf_num;
+};
+
+
+// add for iso
+struct usb_gadget_iso_packet_descriptor
+{
+    unsigned int offset;
+    unsigned int length; /* expected length */
+    unsigned int actual_length;
+    unsigned int status;
+};
+
 /*-------------------------------------------------------------------------*/
 
 /* endpoint-specific parts of the api to the usb controller hardware.
@@ -165,6 +203,13 @@ struct usb_ep_ops {
 	int (*set_halt) (struct usb_ep *ep, int value);
 	int (*fifo_status) (struct usb_ep *ep);
 	void (*fifo_flush) (struct usb_ep *ep);
+#if defined(DWC_EN_ISOC)
+
+    int (*iso_ep_start)(struct usb_ep *, struct usb_iso_request *, gfp_t);
+    int (*iso_ep_stop)(struct usb_ep *, struct usb_iso_request *);
+    struct usb_iso_request *(*alloc_iso_request)(struct usb_ep *ep, int packets, gfp_t);
+    void (*free_iso_request)(struct usb_ep *ep, struct usb_iso_request *req);
+#endif
 };
 
 /*-------------------------------------------------------------------------*/
@@ -238,6 +283,15 @@ usb_ep_alloc_request (struct usb_ep *ep, gfp_t gfp_flags);
  */
 extern _LONG_CALL_ void
 usb_ep_free_request (struct usb_ep *ep, struct usb_request *req);
+
+extern int iso_ep_start(struct usb_ep *usb_ep, struct usb_iso_request *req,
+			gfp_t gfp_flags);
+extern int iso_ep_stop(struct usb_ep *usb_ep, struct usb_iso_request *req);
+extern struct usb_iso_request *alloc_iso_request(struct usb_ep *ep,
+						 int packets, gfp_t gfp_flags);
+
+extern void free_iso_request(struct usb_ep *ep, struct usb_iso_request *req);
+
 #if 0
 /**
  * usb_ep_alloc_buffer - allocate an I/O buffer

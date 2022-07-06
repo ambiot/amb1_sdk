@@ -203,6 +203,122 @@ tcp_create_segment(struct tcp_pcb *pcb, struct pbuf *p, u8_t flags, u32_t seqno,
   return seg;
 } 
 
+#if LWIP_MTU_ADJUST
+void
+tcp_depart_segment(struct tcp_pcb *pcb)
+{
+      struct tcp_seg *seg, *seg_new;
+      struct pbuf *r;
+      uint offset;
+    	/* Move all unacked segments to the head of the unsent queue */
+  	for (seg = pcb->unacked; seg != NULL; seg = seg->next)
+  	{
+  		//printf("original seg 0x%x, next 0x%x, len %d, p 0x%x, p->len %d, p->tot_len %d, p->next 0x%x, tcp seq %d\r\n",
+		//	seg, seg->next, seg->len, seg->p, seg->p->len, seg->p->tot_len,  seg->p->next, ntohl(seg->tcphdr->seqno));
+  		if(seg->len > pcb->mss){
+  			if ((seg_new = (struct tcp_seg *)memp_malloc(MEMP_TCP_SEG)) == NULL) {
+    				LWIP_DEBUGF(TCP_OUTPUT_DEBUG | 2, ("tcp_create_segment: no memory.\n"));
+    				return;
+  			}
+			r = pbuf_alloc(PBUF_TRANSPORT, seg->p->tot_len, PBUF_RAM);
+      			if (r == NULL) {
+        			LWIP_DEBUGF(TCP_OUTPUT_DEBUG, ("tcp_depart_segment: allocating new pbuf failed\n"));
+				seg_new->p = NULL;
+				tcp_seg_free(seg_new);
+				return;
+      			}
+				 
+			//printf("tcp_depart_segment unack: seg->len %d, pcb->mss %d\r\n", seg->len, pcb->mss);				 
+			offset = seg->len - pcb->mss;
+				
+			memcpy(seg_new, seg, sizeof(struct tcp_seg));
+			seg_new->next = seg->next;
+			seg->next = seg_new;
+
+
+			seg->len -= offset;						
+			seg->p->len -= offset;
+			seg->p->tot_len -= offset;
+
+			seg_new->p = r;
+			seg_new->len = offset;
+			seg_new->tcphdr = (struct tcp_hdr *)(seg_new->p->payload);
+  			seg_new->tcphdr->src = htons(pcb->local_port);
+  			seg_new->tcphdr->dest = htons(pcb->remote_port);	
+			seg_new->tcphdr->seqno = htonl(ntohl(seg->tcphdr->seqno)+TCP_TCPLEN(seg));	
+  			/* ackno is set in tcp_output */
+			seg_new->tcphdr->_hdrlen_rsvd_flags = seg->tcphdr->_hdrlen_rsvd_flags;
+  			/* wnd and chksum are set in tcp_output */
+  			seg->tcphdr->urgp = 0;
+			
+			seg_new->p->len = offset+TCP_HLEN;
+			seg_new->p->tot_len = offset+TCP_HLEN;
+			memcpy(&((char*)seg_new->tcphdr)[TCP_HLEN], &((char*)seg->tcphdr)[TCP_HLEN+pcb->mss], offset);
+
+			pcb->snd_queuelen++;
+  		}
+
+  	}
+
+    	/* Move all unacked segments to the head of the unsent queue */
+  	for (seg = pcb->unsent; seg != NULL; seg = seg->next)
+  	{
+  		//printf("unsent: original seg 0x%x, next 0x%x, len %d, p 0x%x, p->len %d, p->tot_len %d, p->next 0x%x, tcp seq %d, mss %d\r\n",
+		//	seg, seg->next, seg->len, seg->p, seg->p->len, seg->p->tot_len,  seg->p->next, ntohl(seg->tcphdr->seqno), pcb->mss);
+  		if(seg->len > pcb->mss){
+  			if ((seg_new = (struct tcp_seg *)memp_malloc(MEMP_TCP_SEG)) == NULL) {
+    				LWIP_DEBUGF(TCP_OUTPUT_DEBUG | 2, ("tcp_create_segment: no memory.\n"));
+    				return;
+  			}
+			r = pbuf_alloc(PBUF_TRANSPORT, seg->p->tot_len, PBUF_RAM);
+      			if (r == NULL) {
+        			LWIP_DEBUGF(TCP_OUTPUT_DEBUG, ("tcp_depart_segment: allocating new pbuf failed\n"));
+				seg_new->p = NULL;					
+				tcp_seg_free(seg_new);					
+				return;
+      			}
+				 
+			//printf("unsent: tcp_depart_segment unack: seg->len %d, pcb->mss %d\r\n", seg->len, pcb->mss);				 
+			offset = seg->len - pcb->mss;
+				
+			memcpy(seg_new, seg, sizeof(struct tcp_seg));
+			seg_new->next = seg->next;
+			seg->next = seg_new;
+
+
+			seg->len -= offset;						
+			seg->p->len -= offset;
+			seg->p->tot_len -= offset;
+
+			seg_new->p = r;
+			seg_new->len = offset;
+			seg_new->tcphdr = (struct tcp_hdr *)(seg_new->p->payload);
+  			seg_new->tcphdr->src = htons(pcb->local_port);
+  			seg_new->tcphdr->dest = htons(pcb->remote_port);	
+			seg_new->tcphdr->seqno = htonl(ntohl(seg->tcphdr->seqno)+TCP_TCPLEN(seg));	
+  			/* ackno is set in tcp_output */
+			seg_new->tcphdr->_hdrlen_rsvd_flags = seg->tcphdr->_hdrlen_rsvd_flags;
+  			/* wnd and chksum are set in tcp_output */
+  			seg->tcphdr->urgp = 0;
+			
+			seg_new->p->len = offset+TCP_HLEN;
+			seg_new->p->tot_len = offset+TCP_HLEN;
+			memcpy(&((char*)seg_new->tcphdr)[TCP_HLEN], &((char*)seg->tcphdr)[TCP_HLEN+pcb->mss], offset);
+
+			pcb->snd_queuelen++;
+  		}
+
+  	}
+
+	pcb->unsent_oversize = 0;
+
+	tcp_rexmit_rto(pcb);
+
+  	return;
+}
+#endif
+
+
 /**
  * Allocate a PBUF_RAM pbuf, perhaps with extra space at the end.
  *

@@ -78,7 +78,7 @@ void psm_sleep_uart(void)
 
 	pmu_tickless_debug(ENABLE); /* open tickless log */
 	pmu_sysactive_timer_init();
-	pmu_set_sysactive_time(PMU_LOGUART_DEVICE, 5000);
+	pmu_set_sysactive_time(5000);
 	pmu_release_wakelock(PMU_OS);
 
 	vTaskDelete(NULL);

@@ -91,6 +91,9 @@ int platform_set_malloc_free( void * (*malloc_func)( size_t ),
 #else /* POLARSSL_PLATFORM_ENTROPY */
 #define polarssl_malloc     rom_ssl_ram_map.ssl_malloc
 #define polarssl_free       rom_ssl_ram_map.ssl_free
+
+int platform_set_malloc_free( void * (*malloc_func)( size_t ),
+                              void (*free_func)( void * ) );
 #endif /* POLARSSL_PLATFORM_ENTROPY */
 
 /*

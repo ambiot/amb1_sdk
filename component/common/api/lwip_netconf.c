@@ -225,6 +225,14 @@ extern uint32_t offer_ip;
 extern uint32_t server_ip;
 extern u8 is_the_same_ap;
 #endif 
+
+#if defined(CONFIG_CONCURRENT_MODE) && defined(CONFIG_STA_STA_MODE)
+#undef IP_ADDR2
+#undef GW_ADDR2
+static u8_t static_addr2 = 0;
+#define IP_ADDR2 static_addr2
+#define GW_ADDR2 static_addr2
+#endif
 /**
   * @brief  LwIP_DHCP_Process_Handle
   * @param  None
@@ -246,6 +254,15 @@ uint8_t LwIP_DHCP(uint8_t idx, uint8_t dhcp_state)
 #if !CONFIG_ETHERNET
 	if(idx > 1)
 		idx = 1;
+#endif
+
+	/* STA+STA: Set different ip network prefix for each interface*/
+#if defined(CONFIG_CONCURRENT_MODE) && defined(CONFIG_STA_STA_MODE)
+	if(idx == 0) {
+		static_addr2 = 1;
+	} else {
+		static_addr2 = 2;
+	}
 #endif
 
 	pnetif = &xnetif[idx];

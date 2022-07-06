@@ -61,6 +61,7 @@
 #include "flash_api.h"
 #include <device_lock.h>
 #include "rtl8710b_ota.h"
+#include "lwip/netdb.h"
 
 #define OTA2_DEFAULT_ADDR   (0x08080000)
 
@@ -121,6 +122,11 @@ void ota_update_free(void *buf)
 	vPortFree(buf);
 }
 
+void* ota_update_realloc(void *buf, unsigned int xWantedSize)
+{
+	return (void*)pvPortReAlloc(buf,xWantedSize);
+}
+
 //---------------------------------------------------------------------
 #if (SERVER_TYPE == SERVER_LOCAL)
 /**
@@ -128,12 +134,12 @@ void ota_update_free(void *buf)
   */
 void ota_platform_reset(void)
 {
-	//wifi_off();
+	rtc_backup_timeinfo();
 
-	/*  Set processor clock to default before system reset */
-	//HAL_WRITE32(SYSTEM_CTRL_BASE, REG_SYS_CLK_CTRL1, 0x00000021);
-	CPU_ClkSet(CLK_31_25M);
-	osDelay(100);
+	/* Set processor clock to default(125MHz) before system reset */
+	HAL_WRITE32(SYSTEM_CTRL_BASE, REG_SYS_CLK_CTRL1, 
+		((HAL_READ32(SYSTEM_CTRL_BASE, REG_SYS_CLK_CTRL1) & (~0x70))));
+	DelayUs(100*1000);
 
 
 	/* CPU reset: Cortex-M3 SCB->AIRCR*/
@@ -156,11 +162,12 @@ int ota_write_ota2_addr(uint32_t ota_addr)
 	/* erase old data if needed */
 	if ((data != 0xFFFFFFFF) && (data != ota_addr)) {
 		FLASH_EreaseDwordsXIP(OFFSET_DATA, 1);
+		data = 0xFFFFFFFF;
 	}
-
 	/* write new data */
-	FLASH_TxData12BXIP(OFFSET_DATA, 4, (u8*)&ota_addr);
-
+	if (data == 0xFFFFFFFF) {
+		FLASH_TxData12BXIP(OFFSET_DATA, 4, (u8*)&ota_addr);
+	}
 	device_mutex_unlock(RT_DEV_LOCK_FLASH);
 
 	return 0;
@@ -992,8 +999,6 @@ static void ota_update_local_task(void *param)
 
 	printf("\n\r[%s] update addr:%x update len: %x", __FUNCTION__, NewImg2Addr, NewImg2Len);
 
-	/* NOTE: Can add codes to check new firmware size based on flash size and flash layout to prevent flash overwrite or user data corruption */
-
 	/* if OTA1 will be update, image size should not cross OTA2 */
 	if(NewImg2Addr == OTA1_ADDR) {
 		if(NewImg2Len > (OTA2_ADDR-OTA1_ADDR) ){	// firmware size too large
@@ -1173,8 +1178,8 @@ int update_ota_cloud(char *repository, char *file_path)
 		printf("\n\r[%s] File path length is too long.", __FUNCTION__);
 		goto exit;
 	}
-	strcpy((char*)pUpdateCfg->repository, repository);
-	strcpy((char*)pUpdateCfg->file_path, file_path);
+	strncpy((char*)pUpdateCfg->repository, repository, sizeof(pUpdateCfg->repository));
+	strncpy((char*)pUpdateCfg->file_path, file_path, sizeof(pUpdateCfg->file_path));
 	  	
 	if(xTaskCreate(update_ota_cloud_task, "OTA_server", STACK_SIZE, pUpdateCfg, TASK_PRIORITY, &TaskOTA) != pdPASS){
 		printf("\n\r[%s] Create update task failed", __FUNCTION__);
@@ -1217,5 +1222,683 @@ void cmd_ota_image(bool cmd)
 	else
 		OTA_Change(OTA_INDEX_1);
 }
+
+#ifdef HTTP_OTA_UPDATE
+
+static char *redirect = NULL;
+static int redirect_len;
+static uint16_t redirect_server_port;
+static char *redirect_server_host = NULL;
+static char *redirect_resource = NULL;
+
+int  parser_url( char *url, char *host, uint16_t *port, char *resource)
+{
+
+	if(url){
+		char *http = NULL, *pos = NULL;
+
+		http = strstr(url, "http://");
+		if(http) // remove http
+			url += strlen("http://");
+		memset(host, 0, redirect_len);
+
+		pos = strstr(url, ":");	// get port
+		if(pos){
+			memcpy(host, url, (pos-url));
+			pos += 1;
+			*port = atoi(pos);
+		}else{
+			pos = strstr(url, "/");
+			if(pos){
+				memcpy(host, url, (pos-url));
+				url = pos;
+			}
+			*port = 80;
+		}
+		printf("server: %s\n\r", host);
+		printf("port: %d\n\r", *port);
+		
+		memset(resource, 0, redirect_len);
+		pos = strstr(url, "/");
+		if(pos){
+			memcpy(resource, pos + 1, strlen(pos + 1));
+		}
+		printf("resource: %s\n\r", resource);
+		
+		return 0;
+	}
+	return -1;
+}
+
+
+//static flash_t flash_ota_rtl8710b;
+uint32_t http_ota_target_index = OTA_INDEX_2;
+
+/******************************************************************************************************************
+** Function Name  : update_ota_http_connect_server
+** Description    : connect to the OTA server
+** Input          : server_socket: the socket used
+**					host: host address of the OTA server
+**					port: port of the OTA server
+** Return         : connect ok:	socket value
+**					Failed:		-1
+*******************************************************************************************************************/
+int update_ota_http_connect_server(int server_socket, char *host, int port){
+	struct sockaddr_in server_addr;
+	struct hostent *server;
+	
+	server_socket = socket(AF_INET, SOCK_STREAM, 0);
+	if(server_socket < 0){
+		printf("\n\r[%s] Create socket failed", __FUNCTION__);
+		return -1;
+	}
+	printf("[%s] Create socket: %d success!\n", __FUNCTION__, server_socket);
+	server = gethostbyname(host);
+	if(server == NULL){ 
+		printf("[ERROR] Get host ip failed\n");
+		return -1;
+	}
+
+	memset(&server_addr,0,sizeof(server_addr));
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_port = htons(port);
+	memcpy(&server_addr.sin_addr.s_addr,server->h_addr,server->h_length);
+
+	if (connect(server_socket,(struct sockaddr *)&server_addr, sizeof(server_addr)) < 0){
+		printf("\n\r[%s] Socket connect failed", __FUNCTION__);
+		return -1;
+	 }
+
+	return server_socket;
+}
+
+/******************************************************************************************************************
+** Function Name  : parse_http_response
+** Description    : Parse the http response to get some useful parameters
+** Input          : response	: The http response got from server
+**					response_len: The length of http response
+**					result		: The struct that store the usful infor about the http response
+** Return         : Parse OK:	1 -> Only got the status code
+**								3 -> Got the status code and content_length, but didn't get the full header							
+**								4 -> Got all the information needed
+**					Failed:		-1
+*******************************************************************************************************************/
+int parse_http_response(uint8_t *response, uint32_t response_len, http_response_result_t *result) {
+	uint32_t i, p, q, m;
+	uint32_t header_end = 0;
+
+	//Get status code
+	if(0 == result->parse_status){//didn't get the http response
+		uint8_t status[4] = {0};
+		i = p = q = m = 0;
+		for (; i < response_len; ++i) {
+			if (' ' == response[i]) {
+				++m;
+				if (1 == m) {//after HTTP/1.1
+					p = i;
+				} 
+				else if (2 == m) {//after status code
+					q = i;
+					break;
+				}
+			}
+		}
+		if (!p || !q || q-p != 4) {//Didn't get the status code
+			return -1;
+		}
+		memcpy(status, response+p+1, 3);//get the status code
+		result->status_code = atoi((char const *)status);
+		if(result->status_code == 200)
+			result->parse_status = 1;
+		else if(result->status_code == 302)
+		{
+			char *tmp=NULL; 
+			const uint8_t *location1 = "LOCATION";
+			const uint8_t *location2 = "Location";
+			printf("response 302:%s \r\n", response);
+		
+			if((tmp =strstr(response, location1)) ||(tmp=strstr(response, location2)))
+			{
+				redirect_len = strlen(tmp+10);
+				printf("Location len = %d\r\n", redirect_len);
+				if(redirect ==NULL)
+				{
+					redirect = ota_update_malloc(redirect_len);
+					if(redirect == NULL)
+					{
+						return -1;
+					}
+				}
+				memset(redirect, 0, redirect_len);
+				memcpy(redirect, tmp+10, strlen(tmp+10));
+			}
+
+			if(redirect_server_host ==NULL)
+			{
+				redirect_server_host = ota_update_malloc(redirect_len);
+				if(redirect_server_host == NULL)
+				{
+					return -1;
+				}
+			}
+
+			if(redirect_resource ==NULL)
+			{
+				redirect_resource = ota_update_malloc(redirect_len);
+				if(redirect_resource == NULL)
+				{
+					return -1;
+				}
+			}
+
+			memset(redirect_server_host, 0, redirect_len);
+			memset(redirect_resource, 0, redirect_len);
+			if(parser_url(redirect, redirect_server_host, &redirect_server_port , redirect_resource)<0)
+			{
+				return -1;
+			}
+			return -1;
+		}
+		else{
+			printf("\n\r[%s] The http response status code is %d", __FUNCTION__, result->status_code);
+			return -1;
+		}
+	}
+
+	//if didn't receive the full http header
+	if(3 == result->parse_status){//didn't get the http response
+		p = q = 0;
+		for (i = 0; i < response_len; ++i) {
+			if (response[i] == '\r' && response[i+1] == '\n' &&
+				response[i+2] == '\r' && response[i+3] == '\n') {//the end of header
+				header_end = i+4;
+				result->parse_status = 4;
+				result->header_len = header_end;
+				result->body = response + header_end;
+				break;
+			}
+		}
+		if (3 == result->parse_status) {//Still didn't receive the full header	
+			result->header_bak = ota_update_malloc(HEADER_BAK_LEN + 1);
+			memset(result->header_bak, 0, strlen(result->header_bak));
+			memcpy(result->header_bak, response + response_len - HEADER_BAK_LEN, HEADER_BAK_LEN);
+		}
+	}
+
+	//Get Content-Length
+	if(1 == result->parse_status){//didn't get the content length
+		uint32_t content_length = 0;
+		const uint8_t *content_length_buf1 = "CONTENT-LENGTH";
+		const uint8_t *content_length_buf2 = "Content-Length";
+		const uint32_t content_length_buf_len = strlen(content_length_buf1);
+		p = q = 0;
+		
+		for (i = 0; i < response_len; ++i) {
+			if (response[i] == '\r' && response[i+1] == '\n') {
+				q = i;//the end of the line
+				if (!memcmp(response+p, content_length_buf1, content_length_buf_len) ||
+						!memcmp(response+p, content_length_buf2, content_length_buf_len)) {//get the content length
+					int j1 = p+content_length_buf_len, j2 = q-1;
+					while ( j1 < q && (*(response+j1) == ':' || *(response+j1) == ' ') ) ++j1;
+					while ( j2 > j1 && *(response+j2) == ' ') --j2;
+					uint8_t len_buf[12] = {0};
+					memcpy(len_buf, response+j1, j2-j1+1);
+					result->body_len = atoi((char const *)len_buf);
+					result->parse_status = 2;
+				}
+				p = i+2;
+			}
+			if (response[i] == '\r' && response[i+1] == '\n' &&
+					response[i+2] == '\r' && response[i+3] == '\n') {//Get the end of header
+				header_end = i+4;//p is the start of the body
+				if(result->parse_status == 2){//get the full header and the content length
+					result->parse_status = 4;
+					result->header_len = header_end;
+					result->body = response + header_end;
+				}
+				else {//there are no content length in header	
+					printf("\n\r[%s] No Content-Length in header", __FUNCTION__);
+					return -1;
+				}
+				break;
+			}	
+		}
+		
+		if (1 == result->parse_status) {//didn't get the content length and the full header
+			result->header_bak = ota_update_malloc(HEADER_BAK_LEN + 1);
+			memset(result->header_bak, 0, strlen(result->header_bak));
+			memcpy(result->header_bak, response + response_len - HEADER_BAK_LEN, HEADER_BAK_LEN);
+		}
+		else if (2 == result->parse_status) {//didn't get the full header but get the content length
+			result->parse_status = 3;
+			result->header_bak = ota_update_malloc(HEADER_BAK_LEN + 1);
+			memset(result->header_bak, 0, strlen(result->header_bak));
+			memcpy(result->header_bak, response + response_len - HEADER_BAK_LEN, HEADER_BAK_LEN);
+		}
+	}
+
+	return result->parse_status;
+}
+
+/**
+    get the address for arranging new firmware and check new address validity
+  */
+uint32_t update_ota_prepare_addr(void)
+{
+	
+	uint32_t NewImg2Addr = 0; 
+	IMAGE_HEADER *FlashImgDataHdr = NULL;
+	IMAGE_HEADER *OTA1Hdr = NULL;
+	uint32_t OTA1Len = 0;
+	uint32_t ota2_addr = OTA2_ADDR;
+
+	/*For future expansion*/
+	#if 0
+	ota2_addr = HAL_READ32(SPI_FLASH_BASE, OFFSET_DATA);
+	#else
+	ota2_addr = OTA2_ADDR;
+	#endif
+	
+	if((ota2_addr%4096) != 0) {
+		printf("\n[%s] ota addr in sys data space not 4k aligned 0x%x\n", __FUNCTION__, ota2_addr);
+		return 0xFFFFFFFF;
+	}
+	if(ota2_addr <= OTA2_ADDR) {
+		ota2_addr = OTA2_ADDR;
+	}
+
+	DBG_INFO_MSG_OFF(_DBG_SPI_FLASH_);
+	/* check OTA index we should update */
+	if (ota_get_cur_index() == OTA_INDEX_1) {
+		http_ota_target_index = OTA_INDEX_2;
+		printf("OTA2 address space will be upgraded\n");
+	} else {
+		http_ota_target_index = OTA_INDEX_1;
+		printf("OTA1 address space will be upgraded\n");
+	}	
+
+	if(http_ota_target_index == OTA_INDEX_2) {
+		/* OAT2 address should not in OTA1 image & should 4K alignment */
+		OTA1Hdr = (IMAGE_HEADER *)(OTA1_ADDR);
+		OTA1Len = OTA1Hdr->image_size;	
+		FlashImgDataHdr = (IMAGE_HEADER *)((u32)OTA1Hdr + OTA1Len + IMAGE_HEADER_LEN);
+		//if ((ota2_addr > ((u32)FlashImgDataHdr + FlashImgDataHdr->image_size + IMAGE_HEADER_LEN)) && ((ota2_addr & 0xfff) == 0)) {
+		if ((ota2_addr > ((u32)FlashImgDataHdr - IMAGE_HEADER_LEN)) && ((ota2_addr & 0xfff) == 0)) {
+			ota_write_ota2_addr(ota2_addr);
+		} else {
+			printf("\n[%s] illegal ota addr 0x%x\n", __FUNCTION__, ota2_addr);
+			return 0xFFFFFFFF;
+		}
+		NewImg2Addr = ota2_addr;
+	} else {
+		NewImg2Addr = OTA1_ADDR;
+	}
+	
+	return NewImg2Addr;
+}
+
+static int restore_ota_file_hdr(int writelen, int len, uint8_t *buf, int socketid)
+{
+	int TempLen = 0, read_bytes = 0;
+	if (writelen < len) {
+		TempLen = len - writelen;
+		while(TempLen) {
+			read_bytes = recv(socketid, buf, TempLen, 0);
+			if(read_bytes < 0){
+				printf("[%s] read socket failed\n", __FUNCTION__);
+				return -1;
+			}
+			if(read_bytes == 0) {
+				writelen = len;
+				break;
+			}
+			TempLen -= read_bytes;
+			buf += read_bytes;
+		}
+		writelen = len;
+	}
+	writelen -= len;
+	return writelen;
+}
+
+/******************************************************
+        functionname    :   http_read_socket
+        description     :   read data form socket
+        socket          :   http server socket
+        recevie_buf :   data buf.
+        buf_len          :   read data length 
+        return          :   >0 the data length read form 
+                            socket 
+                            <0 error,and need to close 
+                            the socket.
+******************************************************/
+int http_read_socket( int socket, uint8_t *recevie_buf, int buf_len )
+{
+	int bytes_rcvd = -1; 
+	if( socket < 0 ) {
+		printf("[%s], socket is invalid\n", __FUNCTION__);
+		return bytes_rcvd;
+	}
+	memset(recevie_buf, 0, buf_len);  
+
+	bytes_rcvd = recv(socket, recevie_buf, buf_len, 0 );
+	if(bytes_rcvd <= 0) {
+		printf("[%s], Close HTTP Socket[%d].\n", socket, __FUNCTION__);
+		return -2;
+	}
+	return bytes_rcvd;
+}
+
+int http_update_ota(char *host, int port, char *resource)
+{
+	int server_socket = -1;
+	unsigned char *buf, *alloc=NULL, *request=NULL;
+	int alloc_buf_size = BUF_SIZE;
+	int read_bytes = 0, i = 0;
+	uint32_t address;
+	uint32_t NewImg2Len = 0, NewImg2Addr = 0;
+	int ret = -1;
+	http_response_result_t rsp_result = {0};
+
+	int writelen = 0;
+	int templen = 0;
+	int RevHdrLen = 0;
+	u8 *TempBuf = NULL;
+	uint32_t NewImg2BlkSize = 0;
+	flash_t	flash;
+	int ota_total_len = 0;
+	static int RemainBytes = 0;
+	u32 TempCnt = 0;
+	static u32 SigCnt = 0;
+	static unsigned long tick1, tick2;
+	
+	update_ota_target_hdr http_ota_target_hdr;
+	u8 http_signature[9] = {0};
+	int http_size = 0;
+	
+restart_http_ota:
+	redirect_server_port = 0;
+	
+	alloc = (unsigned char *)ota_update_malloc(alloc_buf_size);
+	if(!alloc){
+		printf("[%s] Alloc buffer failed\n", __FUNCTION__);
+		goto update_ota_exit;
+	}
+
+	// Connect server
+	server_socket = update_ota_http_connect_server(server_socket, host, port);
+	if(server_socket == -1){
+		goto update_ota_exit;
+	}
+
+	NewImg2Addr = update_ota_prepare_addr();
+	if(NewImg2Addr == -1){
+		printf("[%s] illegal ota addr 0x%x\n", __FUNCTION__, NewImg2Addr);
+		goto update_ota_exit;
+	}
+	
+	/* Write New Image 2 sector*/
+	if(NewImg2Addr != 0xFFFFFFFF){
+		uint32_t idx = 0;
+		int data_len = 0;
+		int request_len = 0;
+		printf("\n\r");
+		
+		/*send http request*/
+		request_len = (strlen("GET /") + strlen(resource) + strlen(" HTTP/1.1\r\nHost: ")
+			+ strlen(host) + strlen("\r\n\r\n") + 1);
+		request = (unsigned char *) ota_update_malloc(request_len);
+		snprintf(request, request_len, "GET /%s HTTP/1.1\r\nHost: %s\r\n\r\n", resource, host);
+
+		ret = write(server_socket, request, strlen(request));
+		if(ret < 0){
+			printf("[%s] Send HTTP request failed\n", __FUNCTION__);
+			goto update_ota_exit;
+		}
+
+		while (3 >= rsp_result.parse_status){//still read header
+			if(0 == rsp_result.parse_status){//didn't get the http response
+				memset(alloc, 0, alloc_buf_size);
+				read_bytes = read(server_socket, alloc, alloc_buf_size);
+				if(read_bytes <= 0){
+					printf("[%s] Read socket failed\n", __FUNCTION__);
+					goto update_ota_exit;
+				}
+	
+				idx = read_bytes;
+				memset(&rsp_result, 0, sizeof(rsp_result));
+				if(parse_http_response(alloc, idx, &rsp_result) == -1){
+					goto update_ota_exit;
+				}
+			} else if ((1 == rsp_result.parse_status) || (3 == rsp_result.parse_status)){//just get the status code
+				memset(alloc, 0, alloc_buf_size);
+				memcpy(alloc, rsp_result.header_bak, HEADER_BAK_LEN);
+				ota_update_free(rsp_result.header_bak);
+				rsp_result.header_bak = NULL;
+				read_bytes = read(server_socket, alloc + HEADER_BAK_LEN, (alloc_buf_size - HEADER_BAK_LEN));
+				if(read_bytes <= 0){
+					printf("[%s] Read socket failed\n", __FUNCTION__);
+					goto update_ota_exit;
+				}
+	
+				idx = read_bytes + HEADER_BAK_LEN;
+
+				if (parse_http_response(alloc, read_bytes + HEADER_BAK_LEN, &rsp_result) == -1){
+					goto update_ota_exit;
+				}
+			}
+		}
+		
+		if (0 == rsp_result.body_len) {
+			printf("[%s] New firmware size = 0 !\n", __FUNCTION__);
+			goto update_ota_exit;
+		} else {
+			printf("[%s] Download new firmware begin, total size : %d\n", __FUNCTION__, rsp_result.body_len);
+		}
+		
+		buf = alloc + idx;
+		writelen = idx - rsp_result.header_len;
+		if((writelen < 16) && ((buf + 16 - writelen - alloc) > alloc_buf_size)){
+			alloc = ota_update_realloc(alloc, alloc_buf_size + 16 - writelen);
+			if(!alloc){
+				printf("[%s] Alloc buffer failed\n", __FUNCTION__);
+				goto update_ota_exit;
+			}
+			alloc_buf_size = alloc_buf_size + 16 - writelen;
+			buf = alloc + idx;			
+		}
+		writelen = restore_ota_file_hdr(writelen, 16, buf,  server_socket);
+
+		if (writelen < 0) {
+			printf("[%s] read socket failed\n", __FUNCTION__);
+		   	goto update_ota_exit;
+		}
+
+		buf = alloc + rsp_result.header_len;
+		memcpy((u8*)(&http_ota_target_hdr.FileHdr), buf, sizeof(http_ota_target_hdr.FileHdr));
+		memcpy((u8*)(&http_ota_target_hdr.FileImgHdr), buf+8, 8);
+
+		/*read the remaining Header info*/
+		buf = alloc + rsp_result.header_len + 16 + writelen;
+		templen =  (http_ota_target_hdr.FileHdr.HdrNum * http_ota_target_hdr.FileImgHdr.ImgHdrLen) - 8;
+		if((writelen < templen) && ((buf + templen - writelen - alloc) > alloc_buf_size)){
+			alloc = ota_update_realloc(alloc, alloc_buf_size + templen - writelen);
+			if(!alloc){
+				printf("[%s] Alloc buffer failed\n", __FUNCTION__);
+				goto update_ota_exit;
+			}
+			alloc_buf_size = alloc_buf_size + templen - writelen;
+			buf = alloc + rsp_result.header_len + 16 + writelen;
+		}
+		writelen = restore_ota_file_hdr(writelen, templen, buf,  server_socket);
+		if (writelen < 0) {
+			printf("[%s] read socket failed\n", __FUNCTION__);
+		 	goto update_ota_exit;
+		}
+		/* ----- parse firmware file header and get the target OTA image header-----*/
+		buf =  alloc + rsp_result.header_len;
+		RevHdrLen = (http_ota_target_hdr.FileHdr.HdrNum * http_ota_target_hdr.FileImgHdr.ImgHdrLen) + 8;
+		TempBuf = (u8 *)(&OtaImgId[http_ota_target_index]);
+		printf("TempBuf = %s\n", TempBuf);
+		if (!get_ota_tartget_header(buf, RevHdrLen, &http_ota_target_hdr, TempBuf)) {
+			printf("Get OTA header failed\n");
+			goto update_ota_exit;
+		}
+
+		/*get new image length from the firmware header*/
+		NewImg2Len = http_ota_target_hdr.FileImgHdr.ImgLen;
+		NewImg2BlkSize = ((NewImg2Len - 1)/4096) + 1;
+		
+		/* if OTA1 will be update, image size should not cross OTA2 */
+		if(http_ota_target_index== OTA_INDEX_1) {
+			if(http_ota_target_hdr.FileImgHdr.ImgLen > (OTA2_ADDR - OTA1_ADDR)) {
+				printf("\n\r[%s] illegal new image length 0x%x", __FUNCTION__, http_ota_target_hdr.FileImgHdr.ImgLen);
+				goto update_ota_exit;
+			}
+		}
+
+		/* Erase upgraded image 2 region */
+		printf("[%s] NewImg2BlkSize %d\n", __FUNCTION__, NewImg2BlkSize);
+		device_mutex_lock(RT_DEV_LOCK_FLASH);
+		for( i = 0; i < NewImg2BlkSize; i++)
+			flash_erase_sector(&flash, NewImg2Addr -SPI_FLASH_BASE + i * 4096);
+		device_mutex_unlock(RT_DEV_LOCK_FLASH);
+
+		/*the upgrade space should be masked, because the encrypt firmware is used 
+		for checksum calculation*/
+		OTF_Mask(1, (NewImg2Addr - SPI_FLASH_BASE), NewImg2BlkSize, 1);
+		/* get OTA image and Write New Image to flash, skip the signature, 
+		not write signature first for power down protection*/
+		address = NewImg2Addr -SPI_FLASH_BASE + 8;
+		templen = (http_ota_target_hdr.FileHdr.HdrNum * http_ota_target_hdr.FileImgHdr.ImgHdrLen) + sizeof(http_ota_target_hdr.FileHdr);
+		RemainBytes = http_ota_target_hdr.FileImgHdr.ImgLen - 8;
+		if (writelen > 0) {
+			writelen = idx - rsp_result.header_len;
+		} else {
+			writelen = templen;
+		}
+
+		buf = alloc + rsp_result.header_len;
+  		ota_total_len += writelen;
+		/*download the new firmware from server*/
+		do {
+			if (ota_total_len > http_ota_target_hdr.FileImgHdr.Offset) {
+				tick1 = xTaskGetTickCount();
+				/*reach the the desired image, the first packet process, restore signature*/
+				TempCnt = ota_total_len - http_ota_target_hdr.FileImgHdr.Offset;
+				if (TempCnt < 8) {
+					SigCnt = TempCnt;
+				} else {
+					SigCnt = 8;
+				}
+				memcpy(http_signature, buf + writelen - TempCnt, SigCnt);
+				if((SigCnt < 8) || (TempCnt -8 == 0)) {
+					while (SigCnt < 8) {
+						writelen = http_read_socket(server_socket, alloc, 8 -SigCnt);
+					        if(writelen < 0 ) {
+					          	printf("[%s], socket recv ota file fail!recived: %d\n", __func__, ota_total_len);
+							goto update_ota_exit;
+					        }
+						memcpy(http_signature + SigCnt, alloc, writelen);
+						SigCnt += writelen;
+					};
+					ota_total_len += (8 - TempCnt);
+				} else {
+					device_mutex_lock(RT_DEV_LOCK_FLASH);
+					if(flash_stream_write(&flash, address + http_size, TempCnt -8, (buf + writelen-TempCnt + 8) ) < 0){
+						printf("[%s] Write sector failed\n", __FUNCTION__);
+						device_mutex_unlock(RT_DEV_LOCK_FLASH);
+						goto update_ota_exit;
+					}
+					device_mutex_unlock(RT_DEV_LOCK_FLASH);
+					http_size += TempCnt -8;
+					RemainBytes -= http_size; 
+				}
+				printf("signature: %s, RemainBytes: %d, flash address: %d, http_size: %d\n", http_signature, RemainBytes, address, http_size);
+				/*normal packet process*/
+				while (RemainBytes) {
+					writelen = http_read_socket(server_socket, alloc, alloc_buf_size);
+				        if(writelen < 0 ) {
+						printf("[%s], socket recv ota file fail!recived: %d\n", __func__, ota_total_len);
+						goto update_ota_exit;
+				        }
+					ota_total_len += writelen;
+					RemainBytes -= writelen;
+					if (RemainBytes <= 0) {
+						writelen = writelen - (-RemainBytes);
+						RemainBytes = 0;
+					}
+					device_mutex_lock(RT_DEV_LOCK_FLASH);
+					if (flash_stream_write(&flash, address + http_size, writelen, alloc) < 0){
+						printf("[%s] Write sector failed\n", __FUNCTION__);
+						device_mutex_unlock(RT_DEV_LOCK_FLASH);
+						goto update_ota_exit;
+					}
+					device_mutex_unlock(RT_DEV_LOCK_FLASH);
+					http_size += writelen;
+					tick2 = xTaskGetTickCount();
+					if (tick2 - tick1 > 1000) {
+						printf("Download OTA file: %d Bytes, RemainBytes = %d Bytes\n", http_size, RemainBytes);
+						tick1 = tick2;
+					}
+				}
+			}
+
+			if (RemainBytes) {
+				writelen = http_read_socket(server_socket, alloc, alloc_buf_size);
+					if(writelen < 0 ) {
+						printf("[%s], socket recv ota file fail!recived:0x%x\n", __func__, ota_total_len);
+						goto update_ota_exit;
+					}
+				ota_total_len += writelen;
+				buf = alloc;
+			}
+		} while( RemainBytes );
+
+		printf("[%s] Download new firmware %d bytes completed\n", __FUNCTION__, idx);
+		printf("signature: %s, size = %d, OtaTargetHdr.FileImgHdr.ImgLen = %d\n", http_signature, http_size, http_ota_target_hdr.FileImgHdr.ImgLen);
+		 /*------------- verify checksum and update signature-----------------*/
+		if(verify_ota_checksum(NewImg2Addr, http_size, http_signature, &http_ota_target_hdr)){
+			if(!change_ota_signature(NewImg2Addr, http_signature, http_ota_target_index)) {
+				ret = -1;
+				printf("\n[%s], change signature failed\n", __FUNCTION__);
+			}
+			printf("\n\r[%s] Update OTA success!", __FUNCTION__);
+			ret = 0;
+		} else {
+		/*if checksum error, clear the signature zone which has been written in flash in case of boot from the wrong firmware*/
+			device_mutex_lock(RT_DEV_LOCK_FLASH);
+			flash_erase_sector(&flash, NewImg2Addr - SPI_FLASH_BASE);
+			device_mutex_unlock(RT_DEV_LOCK_FLASH);
+			printf("\n\r[%s] The checksume is wrong!\n\r", __FUNCTION__);
+			ret = -1;
+			goto update_ota_exit;
+		}
+	}
+update_ota_exit:
+	if(alloc)
+		ota_update_free(alloc);
+	if(request)
+		ota_update_free(request);
+	if(server_socket >= 0)
+		close(server_socket);
+	
+	// redirect_server_port != 0 means there is redirect URL can be downloaded
+	if(redirect_server_port != 0){
+		host = redirect_server_host;
+		resource = redirect_resource;
+		port = redirect_server_port;
+		printf("OTA redirect host: %s, port: %d, resource: %s\n\r", host, port, resource);
+		goto restart_http_ota;
+	}
+	
+	ota_update_free(redirect);
+	ota_update_free(redirect_server_host);
+	ota_update_free(redirect_resource);
+
+	return ret;
+}
+#endif
+
 //---------------------------------------------------------------------
 

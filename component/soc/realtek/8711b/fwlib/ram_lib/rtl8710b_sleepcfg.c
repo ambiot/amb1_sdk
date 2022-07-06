@@ -20,7 +20,7 @@
 
 #include "ameba_soc.h"
 
-const PWRCFG_TypeDef sleep_pwrmgt_config[]=
+PWRCFG_TypeDef sleep_pwrmgt_config[]=
 {
 //  	Module								Status
 	{BIT_SYSON_PMOPT_SLP_XTAL_EN,		OFF},	/* XTAL: 2.2mA */
@@ -31,7 +31,7 @@ const PWRCFG_TypeDef sleep_pwrmgt_config[]=
 
 /* if X can wakeup dsleep, it can wakeup dstandby & sleep */
 /* if X can wakeup dstandby, it can wakeup sleep */
-const PWRCFG_TypeDef sleep_wevent_config[]=
+PWRCFG_TypeDef sleep_wevent_config[]=
 {
 //  	Module									Status
 	{BIT_SYSON_WEVT_GPIO_DSTBY_MSK,		ON},	/* dstandby:	wakepin 0~3 wakeup */
@@ -55,7 +55,7 @@ const PWRCFG_TypeDef sleep_wevent_config[]=
 };
 
 /* you should set BIT_SYSON_WEVT_GPIO_DSTBY_MSK ON if you use wakepin */
-const WAKEPIN_TypeDef sleep_wakepin_config[]=
+WAKEPIN_TypeDef sleep_wakepin_config[]=
 {
 //  	Module			Status		Polarity
 	{WAKUP_0,		OFF,			0},	/* wakeup_0: GPIOA_18 */

@@ -2,6 +2,7 @@
 #include "dhcps.h"
 #include "tcpip.h"
 #include "wifi_constants.h"
+#include "lwip_intf.h"
 extern rtw_mode_t wifi_mode;
 //static struct dhcp_server_state dhcp_server_state_machine;
 static uint8_t dhcp_server_state_machine = DHCP_SERVER_STATE_IDLE;
@@ -30,7 +31,7 @@ static struct ip_addr dhcps_addr_pool_end;
 #if 1
 static struct ip_addr dhcps_owned_first_ip;
 static struct ip_addr dhcps_owned_last_ip;
-static uint8_t dhcps_num_of_available_ips;
+static volatile uint8_t dhcps_num_of_available_ips;
 #endif
 static struct dhcp_msg *dhcp_message_repository;
 static int dhcp_message_total_options_lenth;
@@ -110,7 +111,7 @@ static void save_client_addr(struct ip_addr *client_ip, uint8_t *hwaddr)
 	uint8_t d = (uint8_t)ip4_addr4(client_ip);
 #endif
 	xSemaphoreTake(dhcps_ip_table_semaphore, portMAX_DELAY);
-	memcpy(ip_table.client_mac[d], hwaddr, 6); 
+	memcpy(ip_table.client_mac[d - DHCP_POOL_START], hwaddr, 6); 
 #if (debug_dhcps)	
 #if LWIP_VERSION_MAJOR >= 2
 	printf("\r\n%s: ip %d.%d.%d.%d, hwaddr 0x%02x:0x%02x:0x%02x:0x%02x:0x%02x:0x%02x\n", __func__,
@@ -130,16 +131,21 @@ static uint8_t check_client_request_ip(struct ip_addr *client_req_ip, uint8_t *h
 	int ip_addr4 = 0, i;
 
 #if (debug_dhcps)	
+#if LWIP_VERSION_MAJOR >= 2
+	printf("\r\n%s: ip %d.%d.%d.%d, hwaddr %2.2x:%2.2x:%2.2x:%2.2x:%2.2x:%2.2x\n", __func__,
+		ip4_addr1(ip_2_ip4(client_req_ip)), ip4_addr2(ip_2_ip4(client_req_ip)), ip4_addr3(ip_2_ip4(client_req_ip)), ip4_addr4(ip_2_ip4(client_req_ip)),
+		hwaddr[0], hwaddr[1], hwaddr[2], hwaddr[3], hwaddr[4], hwaddr[5]);
+#else
 	printf("\r\n%s: ip %d.%d.%d.%d, hwaddr %2.2x:%2.2x:%2.2x:%2.2x:%2.2x:%2.2x\n", __func__,
 			ip4_addr1(client_req_ip), ip4_addr2(client_req_ip), ip4_addr3(client_req_ip), ip4_addr4(client_req_ip),
 			hwaddr[0], hwaddr[1], hwaddr[2], hwaddr[3], hwaddr[4], hwaddr[5]);
 #endif	
-
+#endif
 	xSemaphoreTake(dhcps_ip_table_semaphore, portMAX_DELAY);
 	for(i=DHCP_POOL_START;i<=DHCP_POOL_END;i++)
 	{
 		//printf("client[%d] = %2.2x:%2.2x:%2.2x:%2.2x:%2.2x:%2.2x\n",i,ip_table.client_mac[i][0],ip_table.client_mac[i][0],ip_table.client_mac[i][1],ip_table.client_mac[i][2],ip_table.client_mac[i][3],ip_table.client_mac[i][4],ip_table.client_mac[i][5]);
-		if(memcmp(ip_table.client_mac[i], hwaddr, 6) == 0){
+		if(memcmp(ip_table.client_mac[i - DHCP_POOL_START], hwaddr, 6) == 0){
 			if((ip_table.ip_range[i/32]>>(i%32-1)) & 1){
 				ip_addr4 = i;
 				break;
@@ -151,13 +157,12 @@ static uint8_t check_client_request_ip(struct ip_addr *client_req_ip, uint8_t *h
 	if(i == DHCP_POOL_END+1)
 		ip_addr4 = 0;
 
-Exit:
 	return ip_addr4;
 }
 
 static uint8_t check_client_direct_request_ip(struct ip_addr *client_req_ip, uint8_t *hwaddr)
 {
-	int ip_addr4 = 0, i;
+	int ip_addr4 = 0;
 
 #if (debug_dhcps)	
 #if LWIP_VERSION_MAJOR >= 2
@@ -198,24 +203,24 @@ static uint8_t check_client_direct_request_ip(struct ip_addr *client_req_ip, uin
 		goto Exit;
 	}
 	xSemaphoreTake(dhcps_ip_table_semaphore, portMAX_DELAY);
-	printf("ip_table[%d] = %x,%x,%x,%x,%x,%x\n",ip_addr4,ip_table.client_mac[ip_addr4][0],
-										  			     ip_table.client_mac[ip_addr4][1],
-										  				 ip_table.client_mac[ip_addr4][2],
-										  				 ip_table.client_mac[ip_addr4][3],
-										  				 ip_table.client_mac[ip_addr4][4],
-										  				 ip_table.client_mac[ip_addr4][5]);
-	if(	(	ip_table.client_mac[ip_addr4][0] == 0 &&
-			ip_table.client_mac[ip_addr4][1] == 0 &&
-			ip_table.client_mac[ip_addr4][2] == 0 &&
-			ip_table.client_mac[ip_addr4][3] == 0 &&
-			ip_table.client_mac[ip_addr4][4] == 0 &&
-			ip_table.client_mac[ip_addr4][5] == 0) ||
-		(	ip_table.client_mac[ip_addr4][0] == hwaddr[0] &&
-			ip_table.client_mac[ip_addr4][1] == hwaddr[1] &&
-			ip_table.client_mac[ip_addr4][2] == hwaddr[2] &&
-			ip_table.client_mac[ip_addr4][3] == hwaddr[3] &&
-			ip_table.client_mac[ip_addr4][4] == hwaddr[4] &&
-			ip_table.client_mac[ip_addr4][5] == hwaddr[5]))
+	printf("ip_table[%d] = %x,%x,%x,%x,%x,%x\n",ip_addr4,ip_table.client_mac[ip_addr4 - DHCP_POOL_START][0],
+										  			     ip_table.client_mac[ip_addr4 - DHCP_POOL_START][1],
+										  				 ip_table.client_mac[ip_addr4 - DHCP_POOL_START][2],
+										  				 ip_table.client_mac[ip_addr4 - DHCP_POOL_START][3],
+										  				 ip_table.client_mac[ip_addr4 - DHCP_POOL_START][4],
+										  				 ip_table.client_mac[ip_addr4 - DHCP_POOL_START][5]);
+	if(	(	ip_table.client_mac[ip_addr4 - DHCP_POOL_START][0] == 0 &&
+			ip_table.client_mac[ip_addr4 - DHCP_POOL_START][1] == 0 &&
+			ip_table.client_mac[ip_addr4 - DHCP_POOL_START][2] == 0 &&
+			ip_table.client_mac[ip_addr4 - DHCP_POOL_START][3] == 0 &&
+			ip_table.client_mac[ip_addr4 - DHCP_POOL_START][4] == 0 &&
+			ip_table.client_mac[ip_addr4 - DHCP_POOL_START][5] == 0) ||
+		(	ip_table.client_mac[ip_addr4 - DHCP_POOL_START][0] == hwaddr[0] &&
+			ip_table.client_mac[ip_addr4 - DHCP_POOL_START][1] == hwaddr[1] &&
+			ip_table.client_mac[ip_addr4 - DHCP_POOL_START][2] == hwaddr[2] &&
+			ip_table.client_mac[ip_addr4 - DHCP_POOL_START][3] == hwaddr[3] &&
+			ip_table.client_mac[ip_addr4 - DHCP_POOL_START][4] == hwaddr[4] &&
+			ip_table.client_mac[ip_addr4 - DHCP_POOL_START][5] == hwaddr[5]))
 	{
 		// the ip is available or already allocated to this client
 	}
@@ -230,7 +235,7 @@ Exit:
 	return ip_addr4;
 }
 
-static void dump_client_table()
+void dump_client_table(void)
 {
 #if 0
 	int i;
@@ -260,7 +265,7 @@ static uint8_t search_next_ip(void)
 {       
 	uint8_t range_count, offset_count;
 	uint8_t start, end;
-	uint8_t max_count;
+	volatile uint8_t max_count;
 	if(dhcps_addr_pool_set){
 #if LWIP_VERSION_MAJOR >= 2
 		start = (uint8_t)ip4_addr4(ip_2_ip4(&dhcps_addr_pool_start));
@@ -314,9 +319,12 @@ static uint8_t *fill_one_option_content(uint8_t *option_base_addr,
 {
 	uint8_t *option_data_base_address;
 	uint8_t *next_option_start_address = NULL;
+	uint8_t copy_info_array[4] = {0};
 	option_base_addr[0] = option_code;
 	option_base_addr[1] = option_length;
 	option_data_base_address = option_base_addr + 2;
+	if(copy_info == NULL)
+		copy_info = copy_info_array;
 	switch (option_length) {
 	case DHCP_OPTION_LENGTH_FOUR:
 		memcpy(option_data_base_address, copy_info, DHCP_OPTION_LENGTH_FOUR);
@@ -543,17 +551,17 @@ static void dhcps_send_offer(struct pbuf *packet_buffer)
 				dhcps_allocated_client_ethaddr.addr[i] = dhcp_message_repository->chaddr[i];
 #if ETHARP_SUPPORT_STATIC_ENTRIES
 #if LWIP_VERSION_MAJOR >= 2
-				etharp_add_static_entry(ip_2_ip4(&dhcps_allocated_client_address), &dhcps_allocated_client_ethaddr);
+			etharp_add_static_entry(ip_2_ip4(&dhcps_allocated_client_address), &dhcps_allocated_client_ethaddr);
 #else
-				etharp_add_static_entry(&dhcps_allocated_client_address, &dhcps_allocated_client_ethaddr);
+			etharp_add_static_entry(&dhcps_allocated_client_address, &dhcps_allocated_client_ethaddr);
 #endif
 #endif
-				udp_sendto_if(dhcps_pcb, newly_malloc_packet_buffer, &dhcps_allocated_client_address, DHCP_CLIENT_PORT, dhcps_netif);
+			udp_sendto_if(dhcps_pcb, newly_malloc_packet_buffer, &dhcps_allocated_client_address, DHCP_CLIENT_PORT, dhcps_netif);
 #if ETHARP_SUPPORT_STATIC_ENTRIES	
 #if LWIP_VERSION_MAJOR >= 2
-				etharp_remove_static_entry(ip_2_ip4(&dhcps_allocated_client_address));
+			etharp_remove_static_entry(ip_2_ip4(&dhcps_allocated_client_address));
 #else
-				etharp_remove_static_entry(&dhcps_allocated_client_address);
+			etharp_remove_static_entry(&dhcps_allocated_client_address);
 #endif
 #endif
 
@@ -611,16 +619,18 @@ static void dhcps_send_ack(struct pbuf *packet_buffer)
 			for(int i=0;i<6;i++)
 				dhcps_allocated_client_ethaddr.addr[i] = dhcp_message_repository->chaddr[i];
 #if ETHARP_SUPPORT_STATIC_ENTRIES
-#if LWIP_VERSION_MAJOR >= 2
+#if LWIP_VERSION_MAJOR >= 2	
 			etharp_add_static_entry(ip_2_ip4(&dhcps_allocated_client_address), &dhcps_allocated_client_ethaddr);
+
 #else
 			etharp_add_static_entry(&dhcps_allocated_client_address, &dhcps_allocated_client_ethaddr);
 #endif
 #endif
 			udp_sendto_if(dhcps_pcb, newly_malloc_packet_buffer, &dhcps_allocated_client_address, DHCP_CLIENT_PORT, dhcps_netif);
-#if ETHARP_SUPPORT_STATIC_ENTRIES	
-#if LWIP_VERSION_MAJOR >= 2
+#if ETHARP_SUPPORT_STATIC_ENTRIES
+#if LWIP_VERSION_MAJOR >= 2	
 			etharp_remove_static_entry(ip_2_ip4(&dhcps_allocated_client_address));
+
 #else
 			etharp_remove_static_entry(&dhcps_allocated_client_address);
 #endif
@@ -689,8 +699,19 @@ uint8_t dhcps_handle_state_machine_change(uint8_t option_message_type)
 #endif		
 
 		// for renew
-		if((*(uint32_t *) dhcp_message_repository->ciaddr != 0) && (*(uint32_t *)&client_request_ip == 0)) {
+		{
+		#if 0
+			if(((*(uint32_t *) ((void *)dhcp_message_repository->ciaddr)) != 0) && ((*(uint32_t *) ((void *)&client_request_ip)) == 0)) {
 			memcpy(&client_request_ip, dhcp_message_repository->ciaddr, sizeof(client_request_ip));
+			}
+		#endif
+		#if 1
+			void * temp_repo = dhcp_message_repository->ciaddr;
+			void * temp_ip = &client_request_ip;
+			if(((*(uint32_t *) (temp_repo)) != 0) && ((*(uint32_t *) (temp_ip)) == 0)) {
+			memcpy(&client_request_ip, dhcp_message_repository->ciaddr, sizeof(client_request_ip));
+			}
+		#endif
 		}
 
 		if (dhcp_server_state_machine == DHCP_SERVER_STATE_OFFER) {
@@ -714,7 +735,7 @@ uint8_t dhcps_handle_state_machine_change(uint8_t option_message_type)
 			if (ip4_addr4(ip_2_ip4(&dhcps_allocated_client_address)) != 0) 
 #else
 			if (ip4_addr4(&dhcps_allocated_client_address) != 0) 
-#endif 
+#endif
 			{ 
 				if (memcmp((void *)&dhcps_allocated_client_address, (void *)&client_request_ip, 4) == 0) {  
 #if LWIP_VERSION_MAJOR >= 2
@@ -861,9 +882,8 @@ struct pbuf *udp_packet_buffer, struct ip_addr *sender_addr, uint16_t sender_por
 		if (udp_packet_buffer->next != NULL) {
 			merged_packet_buffer = pbuf_coalesce(udp_packet_buffer,
 								PBUF_TRANSPORT);
-			if (merged_packet_buffer->tot_len !=
-						total_length_of_packet_buffer) {
-				pbuf_free(udp_packet_buffer);	
+			if ((merged_packet_buffer->tot_len != total_length_of_packet_buffer) || (merged_packet_buffer == udp_packet_buffer)) {
+				pbuf_free(merged_packet_buffer);
 				return;
 			}
 			udp_packet_buffer = merged_packet_buffer;
@@ -989,7 +1009,7 @@ void dns_server_init(struct netif * pnetif)
 	}
 
 	udp_bind(dns_server_pcb, IP_ADDR_ANY, DNS_SERVER_PORT);
-	udp_recv(dns_server_pcb, dnss_receive_udp_packet_handler, NULL);
+	udp_recv(dns_server_pcb, (udp_recv_fn)dnss_receive_udp_packet_handler, NULL);
 }
 
 void dns_server_deinit(void)
@@ -1070,8 +1090,7 @@ void dhcps_init(struct netif * pnetif)
 #endif
 #endif
 
-
-#if CONFIG_EXAMPLE_UART_ATCMD || CONFIG_EXAMPLE_SPI_ATCMD 
+#if (defined(CONFIG_EXAMPLE_UART_ATCMD) && CONFIG_EXAMPLE_UART_ATCMD) || (defined(CONFIG_EXAMPLE_SPI_ATCMD) && CONFIG_EXAMPLE_SPI_ATCMD)
 #if IP_SOF_BROADCAST
   dhcps_pcb->so_options|=SOF_BROADCAST;
 #endif /* IP_SOF_BROADCAST */
@@ -1127,7 +1146,7 @@ void dhcps_init(struct netif * pnetif)
 		dhcps_set_addr_pool(1,&dhcps_pool_start,&dhcps_pool_end);
 	}
 	udp_bind(dhcps_pcb, IP_ADDR_ANY, DHCP_SERVER_PORT);
-	udp_recv(dhcps_pcb, dhcps_receive_udp_packet_handler, NULL);
+	udp_recv(dhcps_pcb, (udp_recv_fn)dhcps_receive_udp_packet_handler, NULL);
 
 	//DNS server init
 	dns_server_init(pnetif);

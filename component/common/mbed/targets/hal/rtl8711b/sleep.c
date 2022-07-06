@@ -208,4 +208,41 @@ int deepsleep_get_bootup_reason()
 	else
 		return 0;
 }
+
+/**
+  * @brief  get deep standby wakeup reason.
+  * @retval BIT(29): GPIO, BIT(28): REGU A33, BIT(13): RTC, BIT(0): ANA
+  * @ANA and other return 0
+  */
+int deepstandby_get_bootup_reason()
+{
+	int Reason = SOCPS_DstandbyWakeReason();
+	
+	if (Reason & BIT_SYSON_WEVT_GPIO_DSTBY_STS) 
+		return STANDBY_WAKEUP_BY_GPIO;	
+	else if (Reason & BIT_SYSON_WEVT_A33_STS)
+		return STANDBY_WAKEUP_BY_STIMER;
+	else if (Reason & BIT_SYSON_WEVT_RTC_STS)
+		return STANDBY_WAKEUP_BY_RTC;
+	else
+		return 0;
+}
+
+/**
+  * @brief  get deep standby gpio wakeup reason.
+  * @retval BIT(24): _PA_18, BIT(25): _PA_5, BIT(26): _PA_22, BIT(27): _PA_23
+  */
+int deepstandby_get_bootup_reason_gpio() {
+	int reason_gpio = 0;
+	reason_gpio = SOCPS_DstandbyWakeReason_gpio();
+
+	if (reason_gpio & BIT_SYS_WAKEPIN0_WEVENT_STS)
+		return WAKUP_0;
+	else if	(reason_gpio & BIT_SYS_WAKEPIN1_WEVENT_STS)
+		return WAKUP_1;
+	else if	(reason_gpio & BIT_SYS_WAKEPIN2_WEVENT_STS)
+		return WAKUP_2;
+	else if	(reason_gpio & BIT_SYS_WAKEPIN3_WEVENT_STS)
+		return WAKUP_3;
+}
 /******************* (C) COPYRIGHT 2016 Realtek Semiconductor *****END OF FILE****/

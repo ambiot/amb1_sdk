@@ -62,9 +62,10 @@ RtlFlashProgram(VOID)
 
 	Cache_Enable(DISABLE);
 	RCC_PeriphClockCmd(APBPeriph_FLASH, APBPeriph_FLASH_CLOCK, DISABLE);
+	FLASH_CalibrationNewCmd(DISABLE);
 
-	/* set 500MHz Div to gen spic clock 200MHz */
-	FLASH_ClockDiv(FLASH_CLK_DIV2P5);
+	/* set 500MHz Div to gen spic clock 100MHz, flash baudrate = 50MHz */
+	FLASH_ClockDiv(FLASH_CLK_DIV5P0);
 	RCC_PeriphClockCmd(APBPeriph_FLASH, APBPeriph_FLASH_CLOCK, ENABLE);
 	PinCtrl(PERIPHERAL_SPI_FLASH,S0,ON);
 
@@ -79,7 +80,6 @@ RtlFlashProgram(VOID)
 
 	//4 Erase the flash before writing it
 	//FLASH_Erase(EraseChip, 0);
-	//DBG_8195A("Flash erace done\n");
 	DBG_8195A("Flash download start\n");
 	//4 Program the flash from memory data
 	while(1)

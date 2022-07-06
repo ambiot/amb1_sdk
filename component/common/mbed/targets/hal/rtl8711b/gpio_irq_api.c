@@ -38,6 +38,9 @@ int gpio_irq_init(gpio_irq_t *obj, PinName pin, gpio_irq_handler handler, uint32
 
 	obj->pin = pin;
 	
+	RCC_PeriphClockCmd(APBPeriph_GPIO, APBPeriph_GPIO_CLOCK, ENABLE);
+	GPIO_INTConfig(pin, DISABLE);
+
 	GPIO_InitStruct.GPIO_Pin = obj->pin;
 	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_INT;
 	GPIO_InitStruct.GPIO_ITTrigger = GPIO_INT_Trigger_EDGE;
@@ -154,7 +157,6 @@ void gpio_irq_deinit(gpio_irq_t *obj)
   * @param  obj: gpio irq object define in application software.
   * @param  pull_type: this parameter can be one of the following values:
   *		@arg PullNone: HighZ, user can input high or low use this pin
-  *		@arg OpenDrain(is OpenDrain output): no pull + OUT + GPIO[gpio_bit] = 0  
   *		@arg PullDown: pull down
   *		@arg PullUp: pull up 
   * @retval none  
@@ -165,10 +167,6 @@ void gpio_irq_pull_ctrl(gpio_irq_t *obj, PinMode pull_type)
 
 	switch (pull_type) {
 		case PullNone:/* No driver -> Input & High Impendance */
-			GPIO_PuPd = GPIO_PuPd_NOPULL;
-		break;
-		
-		case OpenDrain:/* No driver -> Output Low */
 			GPIO_PuPd = GPIO_PuPd_NOPULL;
 		break;
 

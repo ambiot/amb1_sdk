@@ -37,7 +37,7 @@ void tim5_gen_pwm_one_pulse()
 	RTIM_Cmd(TIM5, ENABLE);
 
 	/*one pulse mode trigger pin*/
-	Pinmux_Config(_PA_19, PINMUX_FUNCTION_PWM); 
+	Pinmux_Config(_PA_19, PINMUX_FUNCTION_TIMINPUT); 
 	PAD_PullCtrl(_PA_19, GPIO_PuPd_UP);
 }
 

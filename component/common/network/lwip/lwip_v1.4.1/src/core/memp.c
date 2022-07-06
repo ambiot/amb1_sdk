@@ -60,7 +60,13 @@
 #include "netif/ppp_oe.h"
 
 #include <string.h>
-
+#if CONFIG_EXAMPLE_ANDLINK
+#if MEMP_USE_CUSTOM_POOLS
+#include <libcoap-4.1.1/net.h>
+#include <libcoap-4.1.1/subscribe.h>
+#include <libcoap-4.1.1/resource.h>
+#endif
+#endif
 #if !MEMP_MEM_MALLOC /* don't build if not configured for use in lwipopts.h */
 
 struct memp {

@@ -100,7 +100,7 @@ static inline int isodigit(const char c)
     return c >= '0' && c <= '7';
 }
 #ifndef strtoul
-#define strtoul(str, endp, base)       simple_strtoul(str, endp, base)
+#define strtoul(str, endp, base)       Strtoul(str, endp, base)
 #endif
 #ifndef strtol
 #define strtol(str, endp, base)        simple_strtol(str, endp, base)

@@ -12,7 +12,7 @@
 #include "wifi_conf.h"
 
 #define MQTT_SELECT_TIMEOUT 1
-void messageArrived(MessageData* data)
+static void messageArrived(MessageData* data)
 {
 	mqtt_printf(MQTT_INFO, "Message arrived on topic %.*s: %.*s\n", data->topicName->lenstring.len, data->topicName->lenstring.data,
 		data->message->payloadlen, (char*)data->message->payload);
@@ -117,6 +117,7 @@ static void prvMQTTTask(void *pvParameters)
 	connectData.MQTTVersion = 3;
 	connectData.clientID.cstring = "FT1_018";
 	char* address = "gpssensor.ddns.net";
+	int port  = 1883;
 	char* sub_topic = "LASS/Test/Pm25Ameba/#";
 	char* pub_topic = "LASS/Test/Pm25Ameba/FT1_018";
 
@@ -158,7 +159,7 @@ static void prvMQTTTask(void *pvParameters)
 				}
 			}
 		}
-		MQTTDataHandle(&client, &read_fds, &connectData, messageArrived, address, sub_topic);
+		MQTTDataHandle(&client, &read_fds, &connectData, messageArrived, address, port, sub_topic);
 	}
 }
 #endif

@@ -93,7 +93,7 @@ WDGInitial(
     u32 PeriodTemp = 0;
     u32 *Reg = (u32*)&(WDGAdapter.Ctrl);
     
-    DBG_8195A(" Period = 0x%08x\n", Period);
+    //DBG_8195A(" Period = 0x%08x\n", Period);
 
     for (CountId = 0; CountId < 12; CountId++) {
         CountTemp = ((0x00000001 << (CountId+1))-1);
@@ -111,8 +111,8 @@ WDGInitial(
         }
     }
 
-    DBG_8195A("WdgScalar = 0x%08x\n", DivFacProcess);
-    DBG_8195A("WdgCunLimit = 0x%08x\n", CountProcess);
+    //DBG_8195A("WdgScalar = 0x%08x\n", DivFacProcess);
+    //DBG_8195A("WdgCunLimit = 0x%08x\n", CountProcess);
 
     WDGAdapter.Ctrl.WdgScalar   = DivFacProcess;
     WDGAdapter.Ctrl.WdgEnByte   = 0;
@@ -171,6 +171,9 @@ WDGStart(
     VOID
 )
 {
+    // Set reset reason
+    HalSetResetCause(REASON_WDT_RST);
+    
     u32 *Temp = (u32*)&(WDGAdapter.Ctrl);
     WDGAdapter.Ctrl.WdgEnByte    = 0xA5;
     HAL_WRITE32(VENDOR_REG_BASE, 0, ((*Temp)));

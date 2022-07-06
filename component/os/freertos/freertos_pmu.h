@@ -29,12 +29,14 @@ typedef enum PMU_DEVICE {
 #ifdef CONFIG_PLATFORM_8711B
 typedef enum {
 	PMU_OS					=0,
-	PMU_WLAN_DEVICE		=1,
-	PMU_LOGUART_DEVICE	=2,
-	PMU_SDIO_DEVICE		=3,
+	
+	PMU_UART0_DEVICE		=1,
+	PMU_UART1_DEVICE		=2,
+	
+	PMU_WLAN_DEVICE		=3,
+	PMU_LOGUART_DEVICE	=4,
+	PMU_SDIO_DEVICE		=5,
 
-	PMU_UART0_DEVICE		=4,
-	PMU_UART1_DEVICE		=5,
 	PMU_I2C0_DEVICE		=6,
 	PMU_I2C1_DEVICE		=7,
 	PMU_USOC_DEVICE		=8,
@@ -42,6 +44,8 @@ typedef enum {
 	PMU_RTC_DEVICE		=10,
 	PMU_CONSOL_DEVICE	=11,
 	PMU_ADC_DEVICE	=12,
+	PMU_WAKWLOCK_TIMEOUT=13,
+	PMU_IPS_DEVICE			=14,
 	PMU_DEV_USER_BASE	=16,
 
 	PMU_MAX				=31
@@ -78,6 +82,22 @@ void pmu_acquire_wakelock(uint32_t nDeviceId);
  */
 void pmu_release_wakelock(uint32_t nDeviceId);
 
+/** Acquire wakelock from isr
+ *
+ *  If wakelock is not equals to 0, then the system won't enter sleep.
+ *
+ *  @param nDeviceId        : The bit which is attempt to add into wakelock
+ */
+void pmu_acquire_wakelock_from_isr(uint32_t nDeviceId);
+
+/** Release wakelock from isr
+ *
+ *  If wakelock equals to 0, then the system may enter sleep state if it is in idle state.
+ *
+ *  @param nDeviceId        : The bit which is attempt to remove from wakelock
+ */
+void pmu_release_wakelock_from_isr(uint32_t nDeviceId);
+
 /** Get current wakelock bit map value
  *
  *  @return               : the current wakelock bit map value
@@ -97,8 +117,9 @@ void pmu_enable_wakelock_stats( unsigned char enable );
  *  It is for debug that which module is power saving killer.
  *
  *  @param pcWriteBuffer  : The char buffer that contain the report
+ *  @param BufferSize     : The maximum size of buffer
  */
-void pmu_get_wakelock_hold_stats( char *pcWriteBuffer );
+void pmu_get_wakelock_hold_stats( char *pcWriteBuffer, unsigned int BufferSize );
 
 /** Recalculate the wakelock statics
  *
@@ -117,7 +138,7 @@ void pmu_clean_wakelock_stat(void);
   *          - 0: _FAIL
   *          - 1: _SUCCESS   
   */
-uint32_t pmu_set_sysactive_time(uint32_t nDeviceId, uint32_t timeout);
+uint32_t pmu_set_sysactive_time(uint32_t timeout_ms);
 
 void pmu_add_wakeup_event(uint32_t event);
 void pmu_del_wakeup_event(uint32_t event);

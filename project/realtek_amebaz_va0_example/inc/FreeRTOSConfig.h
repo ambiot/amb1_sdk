@@ -91,10 +91,10 @@ extern uint32_t SystemCoreClock;
 #define configUSE_TICK_HOOK				0
 #define configCPU_CLOCK_HZ				( SystemCoreClock )
 #define configTICK_RATE_HZ				( ( uint32_t ) 1000 )
-#define configSYSTICK_CLOCK_HZ			32768
+//#define configSYSTICK_CLOCK_HZ			32768
 #define configMINIMAL_STACK_SIZE		( ( unsigned short ) 512 )
 #ifdef CONFIG_WIFI_EN
-#define configTOTAL_HEAP_SIZE			( ( size_t ) ( 110 * 1024 ) )
+#define configTOTAL_HEAP_SIZE			( ( size_t ) ( 100 * 1024 ) )
 #else
 #define configTOTAL_HEAP_SIZE			( ( size_t ) ( 20 * 1024 ) )
 #endif
@@ -125,8 +125,8 @@ extern uint32_t SystemCoreClock;
 #define portCONFIGURE_STATS_PEROID_VALUE	1000 //unit Ticks
 #endif
 
-#define configTIMER_TASK_PRIORITY       ( configMAX_PRIORITIES - 1 )
-#define configTIMER_QUEUE_LENGTH        ( 10 + 32 )
+#define configTIMER_TASK_PRIORITY       ( 1 )
+#define configTIMER_QUEUE_LENGTH        ( 10 + 64)
 #define configTIMER_TASK_STACK_DEPTH    ( 512 )     //USE_MIN_STACK_SIZE modify from 512 to 256
 
 #if (__IASMARM__ != 1)

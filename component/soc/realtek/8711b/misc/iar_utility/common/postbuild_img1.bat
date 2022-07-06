@@ -17,7 +17,51 @@ for /f "delims=" %%i in ('cmd /c "%tooldir%\grep xip_image1 Debug/Exe/bootloader
 ::echo xip_image_start: %xip_image1_start% >> tmp.txt
 ::echo xip_image1_end: %xip_image1_end% >> tmp.txt
 
-findstr /rg "place" Debug\List\bootloader.map > tmp.txt
+
+
+
+
+
+@echo off&setlocal enabledelayedexpansion
+for /f "delims=:" %%i in ('findstr /n /c:"PLACEMENT" Debug\List\bootloader.map') do (
+   set skipline=%%i
+)
+@echo off&setlocal enabledelayedexpansion
+for /f "delims=:" %%i in ('findstr /n /c:"Kind" Debug\List\bootloader.map') do (
+    set endline=%%i
+)
+set /a line=endline-skipline
+
+@echo off&setlocal enabledelayedexpansion
+set n=0
+(for /f "skip=%skipline% delims=" %%a in (Debug\List\bootloader.map) do (
+set /a n+=1
+if !n! leq %line% echo %%a
+))>bootloader1.txt
+
+(for /f "delims=" %%a in (bootloader1.txt) do (
+set /p="%%a"<nul | find /V "<Block>"
+))>bootloader2.txt
+
+@echo off&setlocal enabledelayedexpansion
+set strstart={
+set strend=}
+set /a m=1
+(for /f "delims=" %%a in (bootloader2.txt) do (
+set /p="%%a"<nul
+echo %%a | find "%strstart%" >nul && set /a m-=1
+echo %%a | find "%strend%" >nul && set /a m+=1
+if !m!==1 (echo.)
+))>bootloader3.txt
+findstr /rg "place" bootloader3.txt > tmp.txt
+
+del bootloader1.txt
+del bootloader2.txt
+del bootloader3.txt
+
+
+
+::findstr /rg "place" Debug\List\bootloader.map > tmp.txt
 setlocal enabledelayedexpansion
 for /f "delims=:" %%i in ('findstr /rg "IMAGE1" tmp.txt') do (
     set "var=%%i"
@@ -38,6 +82,16 @@ del tmp.txt
 
 :: pick xip_image1.bin
 %tooldir%\objcopy -j "%sectname_xip1% rw" -Obinary Debug/Exe/bootloader.axf Debug/Exe/xip_image1.bin
+
+set maxbytesize=0
+set file="Debug/Exe/ram_1.bin"
+FOR /F "usebackq" %%A IN ('%file%') DO set size=%%~zA
+
+if %size% EQU %maxbytesize% (
+%tooldir%\objcopy -j "%sectname_ram1%" -Obinary Debug/Exe/bootloader.axf Debug/Exe/ram_1.bin
+%tooldir%\pick %ram1_start% %ram1_end% Debug\Exe\ram_1.bin Debug\Exe\ram_1.p.bin boot
+%tooldir%\objcopy -j "%sectname_xip1%" -Obinary Debug/Exe/bootloader.axf Debug/Exe/xip_image1.bin
+)
 :: add header
 %tooldir%\pick %xip_image1_start% %xip_image1_end% Debug\Exe\xip_image1.bin Debug\Exe\xip_image1.p.bin boot
 

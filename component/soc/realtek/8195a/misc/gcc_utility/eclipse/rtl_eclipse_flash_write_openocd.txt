@@ -119,19 +119,19 @@ set $FILEENDADDR = $FILESTARTADDR + $FLASHDATBUFSIZE
 
 #b RtlFlashProgram:StartOfFlashBlockWrite
 b rtl_flash_download.c:489
-b rtl_flash_download.c:524
+b rtl_flash_download.c:546
 #b Rtl_flash_control.c:RtlFlashProgram
 
 #continue to 489
 c
 
 # Mode 0: erase full chip, Mode 1: skip calibration section and erase to firmware size
-set EraseMode=1
+set EraseMode=2
 print EraseMode
 set FirmwareSize=$RamFileSize
 print FirmwareSize
 
-#continue to 524
+#continue to 546
 c
 
 #printf "...\n"
@@ -190,7 +190,7 @@ dump binary memory  ./Debug/dump.bin $dumpstartaddr $dumpendaddr
 
 
 delete
-b rtl_flash_download.c:556
+b rtl_flash_download.c:578
 c
 
 quit

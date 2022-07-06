@@ -15,12 +15,15 @@
 extern VOID  ReadEfuseContant1(OUT u8 *pContant);
 extern u8 WriteEfuseContant1(IN u8 CodeWordNum, IN u8 WordEnable, IN u8 *pContant);
 extern VOID ReadEOTPContant(OUT u8 *pContant);
+VOID ReadEOTPContant_ex(OUT u8 *pContant);
 extern u32  WriteEOTPContant(IN u8 *pContant);
 extern u32 EOTPChkContant(IN u8 * pContant);
 extern u32  WriteKEY1(IN u8 *pContant);
 extern u32  WriteKEY2(IN u8 *pContant);
 extern u8 GetRemainingEfuseLength(void);
-extern VOID HALJtagOff(VOID);
+extern u32 HALJtagOff(VOID);
+extern u32 HALFwVerifyEn(VOID);
+
 
 /**
   * @brief  get remaining efuse length 
@@ -33,7 +36,7 @@ int  efuse_get_remaining_length(void)
 
 
 /**
-  * @brief  Read efuse contant of specified user 
+  * @brief  Read efuse content of specified user 
   * @param  data: Specified the address to save the readback data.
   */
 void  efuse_mtp_read(uint8_t * data)
@@ -43,7 +46,7 @@ void  efuse_mtp_read(uint8_t * data)
 }
 
 /**
-  * @brief  Write user's contant to efuse
+  * @brief  Write user's content to efuse
   * @param  *data: Specified the data to be programmed.
   * @param len: Specifies the data length of programmed data.
   * @retval   status: Success:0~32 or Failure: -1.
@@ -82,7 +85,7 @@ int  efuse_mtp_write(uint8_t *data, uint8_t len)
 			
 		case 1:
 			WriteEfuseContant1(0, 0xf, data);
-			WriteEfuseContant1(1, word_enable, data+8);	
+			WriteEfuseContant1(1, word_enable, data+8);
 			break;
 
 		case 2:
@@ -109,7 +112,7 @@ int  efuse_mtp_write(uint8_t *data, uint8_t len)
 
 
 /**
- * @brief  Read efuse OTP contant 
+ * @brief  Read efuse OTP content 
  * @param  address: Specifies the offset of the OTP.
  * @param len: Specifies the length of readback data.
  * @param  buf: Specified the address to save the readback data.
@@ -127,7 +130,25 @@ int efuse_otp_read(u8 address, u8 len, u8 *buf)
 
 
 /**
-  * @brief  Write user's contant to OTP efuse
+ * @brief  Read efuse OTP content 
+ * @param  address: Specifies the offset of the OTP.
+ * @param len: Specifies the length of readback data.
+ * @param  buf: Specified the address to save the readback data.
+ */
+int efuse_otp_check(u8 address, u8 len, u8 *buf)
+{
+	u8 content[32];	// the OTP max length is 32
+	
+	if((address+len) > 32)
+		return -1;
+	ReadEOTPContant_ex(content);
+	_memcpy(buf, content+address, len);
+	return 0;
+}
+
+
+/**
+  * @brief  Write user's content to OTP efuse
   * @param  address: Specifies the offset of the programmed OTP.
   * @param len: Specifies the data length of programmed data.
   * @param  *buf: Specified the data to be programmed.
@@ -149,7 +170,7 @@ int efuse_otp_write(u8 address, u8 len, u8 *buf)
 
 
 /**
-  * @brief  ckeck user's contant to OTP efuse
+  * @brief  ckeck user's content to OTP efuse
   * @param  *buf: Specified the data to be programmed.
   * @param len: Specifies the data length of programmed data.
   * @retval   status: Success:0 or Failure: -1.
@@ -213,10 +234,33 @@ int efuse_key2_write(u8 address, u8 len, u8 *buf)
 
 /**
   * @brief  Disable jtag
+  * @retval   status: Success:0 or Failure: -1.
   */
 int efuse_disable_jtag(void)
 {
-    HALJtagOff();
-    return 0;
+    u32 result;
+    result = HALJtagOff();
+    return (result? 0 : -1);
 }
+
+/**
+  * @brief  Enable FW verify 
+  * @retval   status: Success:0 or Failure: -1.
+  */
+int efuse_fw_verify_enable(void)
+{
+    u32 result;
+    result = HALFwVerifyEn();
+    return (result? 0 : -1);
+}
+
+/**
+  * @brief  Enable FW verify check
+  * @retval   without sceurity boot:1 or with security boot: 0.
+  */
+int efuse_fw_verify_check(void)
+{
+    return HALFwVerifyChk();
+}
+
 #endif

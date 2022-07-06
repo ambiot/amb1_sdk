@@ -18,8 +18,8 @@ static gtimer_t sw_rtc;
 static struct tm rtc_timeinfo;
 static int sw_rtc_en=0;
 
-const static u8 dim[14] = { 
-	31, 0, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 31, 28 };
+const static u8 dim[12] = { 
+	31, 0, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
 static inline bool is_leap_year(unsigned int year)
 {
@@ -29,7 +29,7 @@ static inline bool is_leap_year(unsigned int year)
 	
 static u8 days_in_month (u8 month, u8 year)
 {
-	u8 ret = dim [ month - 1 ];
+	u8 ret = dim [ month ];
 	if (ret == 0)
 		ret = is_leap_year (year) ? 29 : 28;
 	return ret;

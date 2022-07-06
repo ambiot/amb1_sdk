@@ -4,9 +4,6 @@
 #include "main.h"
 #include <example_entry.h>
 
-extern void console_init(void);
-
-
 /**
   * @brief  Main program.
   * @param  None
@@ -14,10 +11,6 @@ extern void console_init(void);
   */
 void main(void)
 {
-	if ( rtl_cryptoEngine_init() != 0 ) {
-		DiagPrintf("crypto engine init failed\r\n");
-	}
-
 	/* Initialize log uart and at command service */
 	//console_init();	
 	ReRegisterPlatformLogUart();

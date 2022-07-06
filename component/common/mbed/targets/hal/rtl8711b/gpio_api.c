@@ -63,7 +63,6 @@ void gpio_init(gpio_t *obj, PinName pin)
   * @param  obj: gpio object define in application software.
   * @param  mode: this parameter can be one of the following values:
   *		@arg PullNone: HighZ, user can input high or low use this pin
-  *		@arg OpenDrain(is OpenDrain output): no pull + OUT + GPIO[gpio_bit] = 0  
   *		@arg PullDown: pull down
   *		@arg PullUp: pull up
   * @retval none  
@@ -77,13 +76,7 @@ void gpio_mode(gpio_t *obj, PinMode mode)
 			GPIO_PuPd = GPIO_PuPd_NOPULL;
 			//GPIO_Direction(obj->pin, GPIO_Mode_IN);
 		break;
-		
-		case OpenDrain:/* No driver -> Output Low */
-			GPIO_PuPd = GPIO_PuPd_NOPULL;
-			GPIO_Direction(obj->pin, GPIO_Mode_OUT);
-			GPIO_WriteBit(obj->pin, GPIO_PIN_LOW);
-		break;
-
+			
 		case PullDown:
 			GPIO_PuPd = GPIO_PuPd_DOWN;
 		break;
@@ -181,7 +174,6 @@ int gpio_read(gpio_t *obj)
   * @param  obj: gpio object define in application software.
   * @param  pull_type: this parameter can be one of the following values:
   *		@arg PullNone: HighZ, user can input high or low use this pin
-  *		@arg OpenDrain(is OpenDrain output): no pull + OUT + GPIO[gpio_bit] = 0  
   *		@arg PullDown: pull down
   *		@arg PullUp: pull up 
   * @retval none  
@@ -192,10 +184,6 @@ void gpio_pull_ctrl(gpio_t *obj, PinMode pull_type)
 
 	switch (pull_type) {
 		case PullNone:/* No driver -> Input & High Impendance */
-			GPIO_PuPd = GPIO_PuPd_NOPULL;
-		break;
-		
-		case OpenDrain:/* No driver -> Output Low */
 			GPIO_PuPd = GPIO_PuPd_NOPULL;
 		break;
 

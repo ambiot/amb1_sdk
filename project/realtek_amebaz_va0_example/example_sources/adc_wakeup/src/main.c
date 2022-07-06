@@ -21,7 +21,7 @@ void adc_isr(void *Data)
 	isr = ADC_GetISR();
 	if (isr & BIT_ADC_FIFO_THRESHOLD) {
 		for(i = 0; i < 8; i++) {
-			adc_buf[i] = (u32)ADC_Read();
+			adc_buf[i] = (u32)ADC_Read_RAM();
 		}
 	}
 
@@ -72,7 +72,7 @@ VOID adc_wakeup (VOID)
 	pmu_register_sleep_callback(PMU_ADC_DEVICE, (PSM_HOOK_FUN)adc_suspend, (void*)NULL, (PSM_HOOK_FUN)adc_resume, (void*)NULL);
 
 	pmu_sysactive_timer_init();
-	pmu_set_sysactive_time(PMU_ADC_DEVICE, 1000);
+	pmu_set_sysactive_time(1000);
 	pmu_release_wakelock(PMU_OS);
 
 	vTaskDelete(NULL);

@@ -329,6 +329,9 @@ uart_irqhandler(
 			RegValue = (UART_LineStatusGet(puart_adapter->UARTx));
 			if (RegValue & RUART_LINE_STATUS_REG_DR) {
 				uart_rxdone_callback(puart_adapter);
+			}else{				
+				u8 Dummy_Byte;
+				UART_CharGet(puart_adapter->UARTx, &Dummy_Byte); 
 			}
 		}
 	break;

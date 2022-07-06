@@ -1,4 +1,11 @@
+
+#if defined(CONFIG_PLATFORM_8711B)
+#include "rtl8710b_ota.h"
+#include <FreeRTOS.h>
+#include <task.h>
+#else
 #include <ota_8195a.h>
+#endif
 
 #define PORT	8082
 #define HOST	"192.168.1.53"  //"m-apps.oss-cn-shenzhen.aliyuncs.com"

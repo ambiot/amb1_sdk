@@ -15,8 +15,31 @@
   ****************************************************************************** 
   */
 #include "ameba_soc.h"
-
+#include "rtl8711b_efuse.h"
+#include "rom_aes.h"
 //#ifdef CONFIG_EFUSE_EN
+
+typedef union
+{   unsigned int l;
+    unsigned char b[4];
+} aes_inf;
+
+typedef struct
+{
+    aes_context ctx;
+    aes_inf inf;
+} aes_encrypt_ctx;
+
+#define RDP_KEY_CHECK_TIMES   (3)
+
+/*plaintext image*/
+static u8 rdp_bin_test_plaintext[16]= {0x08,0x18,0x70,0x47,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
+/*encrypt image buffer*/
+static u8 rdp_bin_test_enc[16] = {0};
+/*checksum*/
+static u32 rdp_bin_checksum = 0;
+/*RDP key*/
+static u8 * RDP_key = NULL;
 
 static u32 EFUSE_OTP_Check(u16 Addr, u8 Data)
 {
@@ -128,7 +151,7 @@ int  efuse_mtp_write(uint8_t *data, uint8_t len)
 		case 2:
 			ret = EFUSE_USER1_Write_ROM(0, 0xf, data);				if (ret == _FAIL) return -1;
 			ret = EFUSE_USER1_Write_ROM(1, 0xf, data+8);			if (ret == _FAIL) return -1;
-			ret = EFUSE_USER1_Write_ROM(2, word_enable, data+8);	if (ret == _FAIL) return -1;
+			ret = EFUSE_USER1_Write_ROM(2, word_enable, data+16);	if (ret == _FAIL) return -1;
 			break;
 
 		case 3:
@@ -262,6 +285,162 @@ void efuse_rdp_enable(void)
 void efuse_rdp_keyset(u8 *rdp_key)
 {
 	EFUSE_RDP_KEY(rdp_key);
+	RDP_key = rdp_key;
+}
+
+/**
+  * @brief  encypt rdp check image.
+  * @param  SW_Key: key for encyption
+  * @note  none
+  */
+void efuse_rdp_check_image_encrypt(u8* SW_Key)
+{
+
+	int i;
+	aes_encrypt_ctx enc_ctx;
+	u8 * pByte;
+
+	pByte = (u8 *)&rdp_bin_checksum;
+	memset(&enc_ctx, 0, sizeof(enc_ctx));
+
+	/*calculate checksum using plaintext*/
+	for(i=0; i<4; i++) {
+		pByte[0] ^= rdp_bin_test_plaintext[i*4];
+		pByte[1] ^= rdp_bin_test_plaintext[i*4 + 1];
+		pByte[2] ^= rdp_bin_test_plaintext[i*4 + 2];
+		pByte[3] ^= rdp_bin_test_plaintext[i*4 + 3];
+	}
+	
+	/*encrypt image*/
+	aes_init();
+	aes_encrypt_key(SW_Key, 128, &enc_ctx);	
+	aes_ecb_encrypt(rdp_bin_test_plaintext, rdp_bin_test_enc, 16, &enc_ctx);
+
+	DBG_8195A("[%s] rdp_bin_checksum = %x\n", __func__, rdp_bin_checksum);
+}
+
+/**
+  * @brief  check RDP key.
+  * @param  SW_key: 16B EFUSE SW-KEY
+  * @note  only after calling API "efuse_rdp_enable()" and "efuse_rdp_keyset()" can this API be called.
+  */
+void efuse_rdp_check(u8* SW_key)
+{
+	u32 temp = 0;
+	u32 ret = TRUE;
+	SYSTEM_DATA* pSysData = (SYSTEM_DATA*)(SPI_FLASH_BASE + FLASH_SYSTEM_DATA_ADDR);
+	u32 RDPFlashAddr = pSysData->RDP_FlashAddr;
+	u32 RDPLen = pSysData->RDP_Len;
+	u32 checksum_ipsec, checksum_rdp_flash;
+	u8 aes_ecb_key_dummy[16]={0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+					 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+	u8 *rdp_bin_data_en = (u8*)((u32)__rom_top_4k_start_ - 16 * 1024);
+	u32 PollTimes;
+	u32 RdpEnable = 0;
+	u32 WriteKeyState = 0;
+	u32 RDP_ERR_Flag = 0;
+
+	EFUSE_WRITE_CHECK(ENABLE);
+
+	/*check RDP enable bit*/
+	for(PollTimes = 0; PollTimes < RDP_KEY_CHECK_TIMES; PollTimes++) {
+		/* load RDP EN from efuse */
+		ret = RDP_EN_Request();
+
+		if (ret == FALSE) {
+			DBG_8195A("BIT_RDP_EN_LOAD timeout.\n");
+			RDP_ERR_Flag = RDP_KEY_REQUEST_TIMEOUT;
+			goto exit;
+		}
+
+		temp = HAL_READ32(SYSTEM_CTRL_BASE, REG_FW_PPROTECT_KEY_CTRL);
+
+		if (temp & BIT_RDP_EN) {
+			RdpEnable = 1;
+			DBG_8195A("[%s] PG RDP enable bit ok: %d\n", __func__, PollTimes);
+			break;
+		} else {
+			EFUSE_RDP_EN();
+			DBG_8195A("[%s] PG RDP enable bit again: %d\n", __func__, PollTimes);
+		}
+	}
+	if(RdpEnable == 0) {
+		DBG_8195A("PG RDP enable bit fail!\n");
+		goto exit;
+	}
+
+	/*if software key is not NULL, use the encrypt firmware in ram to check the RDP-key; if NULL, 
+	use the 4kB encrypt firmare burnt in flash to check the RDP-key*/
+	if(SW_key != NULL) {
+		efuse_rdp_check_image_encrypt(SW_key);
+		RDPFlashAddr = (u32)&rdp_bin_test_enc ;
+		RDPLen = 16;
+		checksum_rdp_flash = rdp_bin_checksum;
+		DBG_8195A("software key is valid, use firmware in ram to check RDP-key!\n");
+	} else {
+		checksum_rdp_flash = HAL_READ32(RDPFlashAddr, RDPLen);
+		DBG_8195A("software key is not NULL, use the 4KB firmware in flash to check RDP-key!\n");
+	}
+
+	if(RDP_key == NULL) {
+		DBG_8195A("[%s]: RDP key is NULL\n", __func__);
+		goto exit;
+	}
+
+	/*if RDP enable, check the RDP key*/
+	if (RdpEnable) {
+		for(PollTimes = 0; PollTimes < RDP_KEY_CHECK_TIMES; PollTimes++) {
+			DBG_8195A("BOOT_FLASH_RDP RDP enable \n");		
+			/* enable the key request from efuse */
+			KEY_Request(BIT_RDP_KEY_REQ);
+
+			/* read encrypted rdp code and data from flash or ram*/
+			_memcpy(rdp_bin_data_en, (const void*)RDPFlashAddr, RDPLen);
+			
+			if(0xFFFFFFFF == *((u32*)rdp_bin_data_en)) {
+				DBG_8195A("RDP.bin Empty.\n");
+				RDP_ERR_Flag = RDP_RDPBIN_WRONG;
+				goto exit;
+			}
+			/* decrypt using ctr method and DMA to RAM rdp region using IPSEC */
+			rtl_cryptoEngine_init();
+			/* RDP key will be use when RDPEN, here we just set a dummy key */
+			rtl_crypto_aes_ecb_init(aes_ecb_key_dummy, 16);
+			CRYPTO_SetCheckSumEn(1);
+			rtl_crypto_aes_ecb_decrypt(rdp_bin_data_en,  RDPLen , NULL, 0, (u8*)0x1003F000); 
+			CRYPTO_GetCheckSumData(&checksum_ipsec);
+
+			/* read checksum from rdp flash region and compare with checksum calculated by IPSEC */
+			//checksum_rdp_flash = HAL_READ32(RDPFlashAddr, RDPLen);
+				
+			if(checksum_rdp_flash == checksum_ipsec){
+				WriteKeyState = 1;
+				DBG_8195A("[%s] PG write RDP key ok: %d\n", __func__, PollTimes);
+				DBG_8195A("RDP bin decryption OK!\n");
+				break;
+			}else{
+				EFUSE_RDP_KEY(RDP_key);
+				DBG_8195A("write RDP key again: %d \n", PollTimes);
+				DBG_8195A("checksum_ipsec = 0x%x, checksum_rdp_flash = 0x%x\n", checksum_ipsec, checksum_rdp_flash);
+				RDP_ERR_Flag = RDP_CHECKSUM_ERROR;
+			}
+		}
+
+		if(WriteKeyState == 0) {
+			DBG_8195A("write RDP key failed\n");
+			goto exit;
+		}
+		
+	} else {
+		RDP_ERR_Flag = RDP_NOT_ENABLE;
+		goto exit;
+	}
+	
+exit:
+	if(RDP_ERR_Flag != 0) {
+		DBG_8195A("RDP_ERR_Flag: %d\n", RDP_ERR_Flag);
+	}
+	EFUSE_WRITE_CHECK(DISABLE);
 }
 
 /**
@@ -296,4 +475,41 @@ void efuse_otf_keyset(u8 *otf_key)
 }
 
 //#endif
+
+/**
+  * @brief  Test whether RSIP_key is set OK.
+  * @usage  1. Edit a binary file user.bin, which writes 4 bytes origin_data
+  			2. Use image tool to encrypt user.bin into user-en.bin with RSIP_key
+  			3. Burn boot_all.bin，image2_all_ota1.bin and user-en.bin(user data section, addr: 0x080F5000) into chip
+  			4. Input atcmd ATSK=RSIP_KEY[value(hex) of RSIP_key], then input ATSK=RSIP_KEY_CHECK[value(hex) of origin_data]
+  			5. If OK, input ATSK=RSIP_EN and download encrypted firmware
+  * @param  origin_data: 4 bytes data writed in user.bin
+  */
+IMAGE2_RAM_TEXT_SECTION
+void efuse_otf_check(uint32_t origin_data)
+{	
+	extern char set_key[40];	
+	FLASH_Write_Lock();	
+	uint32_t data = 0;	
+	u8 otf_iv[16]={0x21, 0x32, 0x53, 0x64, 0x75, 0x86, 0xa7, 0xb8, 
+					0xc9, 0xaa, 0xcb, 0x1c, 0x00, 0x00, 0x00, 0x00};
+
+	KEY_Request(BIT_OTF_KEY_REQ);
+	OTF_init(otf_iv);
+	OTF_Cmd(ENABLE);
+	//need delay after enable
+	Cache_Flush();
+	DBG_8195A("OTF ENABLE\n");
+	data = HAL_READ32(SPI_FLASH_BASE, 0x000F5000);
+	DBG_8195A("origin data: %x\n",origin_data);
+	DBG_8195A("read data: %x\n",data);
+	if(origin_data==data)
+		DBG_8195A("set key: %s\nRSIP key check correct!\n", set_key);
+	else
+		DBG_8195A("RSIP key check wrong!\n");
+	OTF_Cmd(DISABLE);
+	FLASH_Write_Unlock();
+	DBG_8195A("OTF DISABLE\n");
+}
+
 /******************* (C) COPYRIGHT 2016 Realtek Semiconductor *****END OF FILE****/

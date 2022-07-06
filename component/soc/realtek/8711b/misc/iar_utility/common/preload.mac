@@ -68,13 +68,6 @@ __setup_system()
 	__var tmp;
 
 	__hwReset(1);
-
-	tmp = __readMemory32(0x40000210, "Memory")|(1<<28);
-	__writeMemory32(tmp, 0x40000210, "Memory");
-
-	__message "User Preload....";
-	__loadImage("$TARGET_PATH$ ", 0, 0);
-	__message "User Preload end....";
 }
 
 execUserPreload()

@@ -1,25 +1,11 @@
-/**
-  ******************************************************************************
-  * @file    lwipopts.h
-  * @author  MCD Application Team
-  * @version V1.1.0
-  * @date    07-October-2011
-  * @brief   lwIP Options Configuration.
-  *          This file is based on Utilities\lwip_v1.3.2\src\include\lwip\opt.h 
-  *          and contains the lwIP configuration for the STM32F2x7 demonstration.
-  ******************************************************************************
-  * @attention
+/******************************************************************************
   *
-  * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
-  * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE
-  * TIME. AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY
-  * DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING
-  * FROM THE CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE
-  * CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
+  * This module is a confidential and proprietary property of RealTek and
+  * possession or use of this module requires written permission of RealTek.
   *
-  * <h2><center>&copy; COPYRIGHT 2011 STMicroelectronics</center></h2>
-  ******************************************************************************
-  */
+  * Copyright(c) 2016, Realtek Semiconductor Corporation. All rights reserved. 
+  *
+******************************************************************************/
 
 #ifndef __LWIPOPTS_H__
 #define __LWIPOPTS_H__
@@ -27,7 +13,7 @@
 #include <platform/platform_stdlib.h>
 #include "platform_opts.h"
 #define WIFI_LOGO_CERTIFICATION_CONFIG 0    //for ping 10k test buffer setting
-
+    
 /**
  * SYS_LIGHTWEIGHT_PROT==1: if you want inter-task protection for certain
  * critical regions during buffer allocation, deallocation and memory
@@ -37,6 +23,7 @@
 
 /* Define LWIP_COMPAT_MUTEX if the port has no mutexes and binary semaphores
  should be used instead */
+#define LWIP_COMPAT_MUTEX       1
 #define LWIP_COMPAT_MUTEX       1
 
 #define ETHARP_TRUST_IP_MAC     0
@@ -63,7 +50,7 @@
 /* MEM_SIZE: the size of the heap memory. If the application will send
 a lot of data that needs to be copied, this should be set high. */
 #if WIFI_LOGO_CERTIFICATION_CONFIG
-    #define MEM_SIZE                (10*1024) //for ping 10k test
+    #define MEM_SIZE                (20*1024) //for ping 10k test
 #elif CONFIG_ETHERNET
 	#define MEM_SIZE				(6*1024)  //for iperf test
 #else
@@ -94,14 +81,14 @@ a lot of data that needs to be copied, this should be set high. */
 /* ---------- Pbuf options ---------- */
 /* PBUF_POOL_SIZE: the number of buffers in the pbuf pool. */
 #if WIFI_LOGO_CERTIFICATION_CONFIG
-    #define PBUF_POOL_SIZE          30 //for ping 10k test
+    #define PBUF_POOL_SIZE          40 //for ping 10k test
 #else
     #define PBUF_POOL_SIZE          20
 #endif
 
 /* IP_REASS_MAX_PBUFS: Total maximum amount of pbufs waiting to be reassembled.*/
 #if WIFI_LOGO_CERTIFICATION_CONFIG
-    #define IP_REASS_MAX_PBUFS              30 //for ping 10k test
+    #define IP_REASS_MAX_PBUFS              40 //for ping 10k test
 #else
     #define IP_REASS_MAX_PBUFS              10
 #endif
@@ -130,7 +117,7 @@ a lot of data that needs to be copied, this should be set high. */
 #define TCP_SND_QUEUELEN        (4* TCP_SND_BUF/TCP_MSS)
 
 /* TCP receive window. */
-#define TCP_WND                 (2*TCP_MSS)
+#define TCP_WND                 (4*TCP_MSS)
 
 
 /* ---------- ICMP options ---------- */
@@ -155,10 +142,19 @@ a lot of data that needs to be copied, this should be set high. */
 /* ---------- UPNP options --------- */
 #define LWIP_UPNP		0
 
+/* ---------- SO_SNDRCVTIMEO_NONSTANDARD options --------- */
+#define LWIP_SO_SNDRCVTIMEO_NONSTANDARD 1
+
+/* ---------- SO_REUSE options --------- */
+#define SO_REUSE                        1
+
 /* Support Multicast */
 #define LWIP_IGMP                   1
 #define LWIP_RAND()                 rand()
+extern unsigned int sys_now(void);
 #define LWIP_SRAND()                srand(sys_now())
+
+#define LWIP_MTU_ADJUST 		1
 
 /* Support TCP Keepalive */
 #define LWIP_TCP_KEEPALIVE				1
@@ -215,6 +211,10 @@ a lot of data that needs to be copied, this should be set high. */
 
 #endif
 
+
+#if (CONFIG_EXAMPLE_ANDLINK || CONFIG_LIBCOAP)
+#define MEMP_USE_CUSTOM_POOLS	1
+#endif
 /* ---------- Statistics options ---------- */
 #define LWIP_STATS 0
 #define LWIP_PROVIDE_ERRNO 1
@@ -290,7 +290,7 @@ The STM32F2x7 allows computing and verifying the IP, UDP, TCP and ICMP checksums
    -----------------------------------
 */
 
-#define LWIP_DEBUG                      0
+#define LWIP_DEBUG                      1
 
 
 /*
@@ -309,12 +309,32 @@ The STM32F2x7 allows computing and verifying the IP, UDP, TCP and ICMP checksums
 #define TCPIP_THREAD_PRIO               (configMAX_PRIORITIES - 2)
 
 /* Added by Realtek */
+#define LWIP_RANDOMIZE_INITIAL_LOCAL_PORTS 1
+
 #ifndef DNS_IGNORE_REPLY_ERR
 #define DNS_IGNORE_REPLY_ERR   1
 #endif /* DNS_IGNORE_REPLY_ERR */
 
 /* Added by Realtek. For DHCP server reply unicast DHCP packets before the ip actually assigned. */
 #define ETHARP_SUPPORT_STATIC_ENTRIES   1	  
+
+/* Extra options for lwip_v2.0.2 which should not affect lwip_v1.4.1 */
+#define LWIP_TCPIP_CORE_LOCKING         0
+#define LWIP_TCPIP_TIMEOUT              1
+#define LWIP_SO_RCVTIMEO                1
+#define LWIP_SOCKET_SET_ERRNO           0
+#undef LWIP_DEBUG
+#define LWIP_RAW                        1
+#define LWIP_AUTOIP                     1
+#define TCPIP_THREAD_NAME              "TCP_IP" 
+
+#define LWIP_IPV6                       0
+#if LWIP_IPV6
+#undef  MEMP_NUM_SYS_TIMEOUT
+#define MEMP_NUM_SYS_TIMEOUT            13
+#endif
+     
+#include "lwip/init.h"                  //for version control
 
 #endif /* __LWIPOPTS_H__ */
 

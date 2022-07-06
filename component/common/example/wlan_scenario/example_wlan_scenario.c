@@ -6,6 +6,8 @@
 #include "wifi_constants.h"
 #include "wifi_structures.h"
 #include "lwip_netconf.h"
+#include "wifi_conf.h"
+#include "dhcp/dhcps.h"
 
 #if CONFIG_EXAMPLE_WLAN_SCENARIO
 
@@ -91,12 +93,12 @@ static void authentication(void){
 	*	2. Connect to AP by different authentications		
 	*********************************************************************************/	
 	printf("\n\r[WLAN_SCENARIO_EXAMPLE] Connect to AP\n");
-	
+#if defined(CONFIG_ENABLE_WPS) && (CONFIG_ENABLE_WPS)
 	// By WPS-PBC.
 	///*
 	char *argv[2];
 	argv[1] = "pbc";
-	cmd_wps(2, &argv);
+	cmd_wps(2, argv);
 	//*/
 	
 	// By WPS-PIN static PIN. With specified PIN code 92402508 as example.
@@ -113,7 +115,9 @@ static void authentication(void){
 	argv[1] = "pin";
 	cmd_wps(2, &argv);
 	*/
-	
+#else
+	printf("Please set CONFIG_ENABLE_WPS 1 in platform_opts.h to enable WPS\n");
+#endif
 	// By open.
 	/*
 	ssid = "Test_ap";
@@ -336,7 +340,7 @@ static void mode_switch_2(void){
  */
 static void mode_switch_3(void){
 	printf("\n\n[WLAN_SCENARIO_EXAMPLE] Wi-Fi example mode switch case 3...\n");
-	
+#if defined(CONFIG_ENABLE_P2P) && (CONFIG_ENABLE_P2P)
 	/*********************************************************************************
 	*	1. Enable Wi-Fi Direct mode			
 	*********************************************************************************/
@@ -363,7 +367,7 @@ static void mode_switch_3(void){
 	*********************************************************************************/
 	printf("\n\r[WLAN_SCENARIO_EXAMPLE] Show Wi-Fi Direct Information\n");
 	// Show the Wi-Fi Direct Info.
-	cmd_p2p_info();
+	cmd_p2p_info(NULL, NULL);
 	
 	
 	vTaskDelay(60000);	
@@ -376,6 +380,9 @@ static void mode_switch_3(void){
 	// Disable Wi-Fi Direct GO. Will disable Wi-Fi either.
 	// This command has to be invoked to release the P2P resource.
 	cmd_wifi_p2p_stop(NULL, NULL);	
+#else
+	printf("Please set CONFIG_ENABLE_P2P 1 in platform_opts.h to enable P2P\n");
+#endif
 }
 
 /**
@@ -490,13 +497,14 @@ static void mode_switch_4(void){
  */
 static void mode_switch_5(void){
 	printf("\n\n[WLAN_SCENARIO_EXAMPLE] Wi-Fi example mode switch case 5...\n");
+#if defined(CONFIG_ENABLE_P2P) && (CONFIG_ENABLE_P2P)
 	// First measurement.
 	unsigned long tick_STA_to_P2PGO_begin;
 	unsigned long tick_STA_to_P2PGO_end;	
 	// Second measurement.
 	unsigned long tick_P2PGO_to_STA_begin;
 	unsigned long tick_P2PGO_to_STA_end;
-	
+#endif
 	/*********************************************************************************
 	*	1. Enable Wi-Fi with STA mode
 	*********************************************************************************/
@@ -505,7 +513,7 @@ static void mode_switch_5(void){
 		printf("\n\r[WLAN_SCENARIO_EXAMPLE] ERROR: wifi_on failed\n");
 		return;
 	}
-	
+#if defined(CONFIG_ENABLE_P2P) && (CONFIG_ENABLE_P2P)
 	/*********************************************************************************
 	*	2. Disable STA mode and start P2P GO (First measurement)
 	*********************************************************************************/
@@ -539,7 +547,9 @@ static void mode_switch_5(void){
 	tick_P2PGO_to_STA_begin = xTaskGetTickCount();
 	
 	cmd_wifi_p2p_stop(NULL, NULL);
-	
+#else
+	printf("Please set CONFIG_ENABLE_P2P 1 in platform_opts.h to enable P2P\n");
+#endif
 	if(wifi_on(RTW_MODE_STA) < 0){
 		printf("\n\r[WLAN_SCENARIO_EXAMPLE] ERROR: wifi_on failed\n");
 		return;
@@ -551,10 +561,12 @@ static void mode_switch_5(void){
 	if(wifi_connect(ssid, RTW_SECURITY_WPA2_AES_PSK, password, strlen(ssid), strlen(password), -1, NULL) == RTW_SUCCESS)
 		LwIP_DHCP(0, DHCP_START);
 	
+#if defined(CONFIG_ENABLE_P2P) && (CONFIG_ENABLE_P2P)
 	// End time.
 	tick_P2PGO_to_STA_end = xTaskGetTickCount();
 	printf("\n\r[WLAN_SCENARIO_EXAMPLE] Time diff switch from stop P2P GO to enable STA mode: %d ms\n",
 	       (tick_P2PGO_to_STA_end - tick_P2PGO_to_STA_begin));
+#endif
 }
 
 
@@ -761,7 +773,7 @@ static void scenario_1(void){
 		return;
 	}
 	
-	
+#if defined(CONFIG_ENABLE_WPS) && (CONFIG_ENABLE_WPS)
 	/*********************************************************************************
 	*	2. Connect to AP by WPS enrollee PIN mode			
 	*********************************************************************************/
@@ -772,15 +784,17 @@ static void scenario_1(void){
 	char *argv[3];
 	argv[1] = "pin";
 	argv[2] = "92402508";
-	cmd_wps(3, &argv);
+	cmd_wps(3, argv);
 	
 	// If not connected, retry one time.
 	if(wifi_is_connected_to_ap() != RTW_SUCCESS){
 		printf("\n\r[WLAN_SCENARIO_EXAMPLE] WPS enrollee failed, reconnect one time\n");
-		cmd_wps(3, &argv);
+		cmd_wps(3, argv);
 	}
-	
-	
+#else
+	printf("Please set CONFIG_ENABLE_WPS 1 in platform_opts.h to enable WPS\n");
+#endif
+#if defined(CONFIG_ENABLE_P2P) && (CONFIG_ENABLE_P2P)
 	/*********************************************************************************
 	*	3. Enable Wi-Fi Direct GO			
 	*********************************************************************************/
@@ -797,7 +811,10 @@ static void scenario_1(void){
 	printf("\n\r[WLAN_SCENARIO_EXAMPLE] Wi-Fi Direct Group Owner mode enabled\n");
 	
 	// Show the Wi-Fi Direct Info.
-	cmd_p2p_info();
+	cmd_p2p_info(NULL, NULL);
+#else
+	printf("Please set CONFIG_ENABLE_P2P 1 in platform_opts.h to enable P2P\n");
+#endif
 }
 
 /**
@@ -810,7 +827,7 @@ static void scenario_1(void){
  */
 static void scenario_2(void){
 	printf("\n\n[WLAN_SCENARIO_EXAMPLE] Wi-Fi example scenario case 2...\n");
-	
+#if defined(CONFIG_ENABLE_P2P) && (CONFIG_ENABLE_P2P)
 	/*********************************************************************************
 	*	1. Enable Wi-Fi Direct GO			
 	*********************************************************************************/
@@ -826,7 +843,7 @@ static void scenario_2(void){
 	}
 	printf("\n\r[WLAN_SCENARIO_EXAMPLE] Wi-Fi Direct Group Owner mode enabled\n");
 	// Show the Wi-Fi Direct Info.
-	cmd_p2p_info();
+	cmd_p2p_info(NULL, NULL);
 	
 	
 	/*********************************************************************************
@@ -841,8 +858,10 @@ static void scenario_2(void){
 		printf("\n\r[WLAN_SCENARIO_EXAMPLE] ERROR: wifi_on() failed\n");
 		return;
 	}
-	
-	
+#else
+	printf("Please set CONFIG_ENABLE_P2P 1 in platform_opts.h to enable P2P\n");
+#endif
+#if defined(CONFIG_ENABLE_WPS) && (CONFIG_ENABLE_WPS)
 	/*********************************************************************************
 	*	3. Connect to AP by WPS enrollee PBC mode			
 	*********************************************************************************/
@@ -852,13 +871,16 @@ static void scenario_2(void){
 	// It will take at most 2 min to do the procedure.
 	char *argv[2];
 	argv[1] = "pbc";
-	cmd_wps(2, &argv);
+	cmd_wps(2, argv);
 	
 	// If not connected, retry one time.
 	if(wifi_is_connected_to_ap() != RTW_SUCCESS){
 		printf("\n\r[WLAN_SCENARIO_EXAMPLE] WPS enrollee failed, reconnect one time\n");
-		cmd_wps(2, &argv);
+		cmd_wps(2, argv);
 	}
+#else
+	printf("Please set CONFIG_ENABLE_WPS 1 in platform_opts.h to enable WPS\n");
+#endif
 }
 
 /**
@@ -917,7 +939,7 @@ static void scenario_3(void){
 	wifi_get_setting(WLAN0_NAME,&setting);
 	wifi_show_setting(WLAN0_NAME,&setting);
 	
-	
+#if defined(CONFIG_ENABLE_P2P) && (CONFIG_ENABLE_P2P)
 	/**********************************************************************************
 	*	4. Enable Wi-Fi Direct GO			
 	**********************************************************************************/
@@ -934,7 +956,10 @@ static void scenario_3(void){
 	printf("\n\r[WLAN_SCENARIO_EXAMPLE] Wi-Fi Direct Group Owner mode enabled\n");
 	
 	// Show the Wi-Fi Direct Info.
-	cmd_p2p_info();
+	cmd_p2p_info(NULL, NULL);
+#else
+	printf("Please set CONFIG_ENABLE_P2P 1 in platform_opts.h to enable P2P\n");
+#endif
 }
 
 /**
@@ -962,7 +987,7 @@ static void scenario_4(void){
 		return;
 	}
 	
-	
+#if defined(CONFIG_ENABLE_WPS) && (CONFIG_ENABLE_WPS)
 	/**********************************************************************************
 	*	2. Connect to AP by WPS enrollee PBC mode			
 	**********************************************************************************/
@@ -972,14 +997,16 @@ static void scenario_4(void){
 	// It will take at most 2 min to do the procedure.
 	char *argv[2];
 	argv[1] = "pbc";
-	cmd_wps(2, &argv);
+	cmd_wps(2, argv);
 	
 	// If not connected, retry one time.
 	if(wifi_is_connected_to_ap() != RTW_SUCCESS){
 		printf("\n\r[WLAN_SCENARIO_EXAMPLE] WPS enrollee failed, reconnect one time\n");
-		cmd_wps(2, &argv);
+		cmd_wps(2, argv);
 	}
-	
+#else
+	printf("Please set CONFIG_ENABLE_WPS 1 in platform_opts.h to enable WPS\n");
+#endif
 	
 	/**********************************************************************************
 	*	3. Disconnect from AP			
@@ -995,7 +1022,7 @@ static void scenario_4(void){
 	wifi_get_setting(WLAN0_NAME,&setting);
 	wifi_show_setting(WLAN0_NAME,&setting);	
 
-	
+#if defined(CONFIG_ENABLE_P2P) && (CONFIG_ENABLE_P2P)
 	/**********************************************************************************
 	*	4. Enable Wi-Fi Direct GO			
 	**********************************************************************************/
@@ -1012,7 +1039,7 @@ static void scenario_4(void){
 	printf("\n\r[WLAN_SCENARIO_EXAMPLE] Wi-Fi Direct Group Owner mode enabled\n");
 	
 	// Show the Wi-Fi Direct Info.
-	cmd_p2p_info();
+	cmd_p2p_info(NULL, NULL);
 
 	
 	/**********************************************************************************
@@ -1022,6 +1049,9 @@ static void scenario_4(void){
 	// Disable Wi-Fi Direct GO.
 	// This command has to be invoked to release the P2P resource.
 	cmd_wifi_p2p_stop(NULL, NULL);
+#else
+	printf("Please set CONFIG_ENABLE_P2P 1 in platform_opts.h to enable P2P\n");
+#endif
 	// Enable Wi-Fi on STA mode.
 	if(wifi_on(RTW_MODE_STA) < 0){
 		printf("\n\r[WLAN_SCENARIO_EXAMPLE] ERROR: wifi_on() failed\n");
@@ -1194,14 +1224,19 @@ static rtw_result_t scan_result_handler(rtw_scan_handler_result_t* malloced_scan
     		printf(" %d\t  ", record->channel);
     		printf(" %d\t  ", record->wps_type);
     		printf("%s\t\t ", ( record->security == RTW_SECURITY_OPEN ) ? "Open" :
-                                 ( record->security == RTW_SECURITY_WEP_PSK ) ? "WEP" :
-                                 ( record->security == RTW_SECURITY_WPA_TKIP_PSK ) ? "WPA TKIP" :
-                                 ( record->security == RTW_SECURITY_WPA_AES_PSK ) ? "WPA AES" :
-                                 ( record->security == RTW_SECURITY_WPA2_AES_PSK ) ? "WPA2 AES" :
-                                 ( record->security == RTW_SECURITY_WPA2_TKIP_PSK ) ? "WPA2 TKIP" :
-                                 ( record->security == RTW_SECURITY_WPA2_MIXED_PSK ) ? "WPA2 Mixed" :
-                                 ( record->security == RTW_SECURITY_WPA_WPA2_MIXED ) ? "WPA/WPA2 AES" :
-                                 "Unknown");
+								( record->security == RTW_SECURITY_WEP_PSK ) ? "WEP" :
+								( record->security == RTW_SECURITY_WPA_TKIP_PSK ) ? "WPA TKIP" :
+								( record->security == RTW_SECURITY_WPA_AES_PSK ) ? "WPA AES" :
+								( record->security == RTW_SECURITY_WPA_MIXED_PSK ) ? "WPA Mixed" :
+								( record->security == RTW_SECURITY_WPA2_TKIP_PSK ) ? "WPA2 TKIP" :
+								( record->security == RTW_SECURITY_WPA2_AES_PSK ) ? "WPA2 AES" :
+								( record->security == RTW_SECURITY_WPA2_MIXED_PSK ) ? "WPA2 Mixed" :
+								( record->security == RTW_SECURITY_WPA_WPA2_TKIP_PSK ) ? "WPA/WPA2 TKIP" :
+								( record->security == RTW_SECURITY_WPA_WPA2_AES_PSK ) ? "WPA/WPA2 AES" :
+								( record->security == RTW_SECURITY_WPA_WPA2_MIXED_PSK ) ? "WPA/WPA2 Mixed" :
+								( record->security == RTW_SECURITY_WPA3_AES_PSK ) ? "WPA3 AES" :
+								( record->security == RTW_SECURITY_WPA2_WPA3_MIXED) ? "WPA2/WPA3-SAE AES" :
+								"Unknown");
     		printf( " %s ", record->SSID.val);
     		printf("\r\n");
 	}

@@ -14,7 +14,7 @@
 #include "hal_pwm.h"
 #include "hal_timer.h"
 
-const u8 PWMTimerIdx[MAX_PWM_CTRL_PIN]= {3,4,5,2};  // the G-timer ID used for PWM pin 0~3
+//const u8 PWMTimerIdx[MAX_PWM_CTRL_PIN]= {3,4,5,2};  // the G-timer ID used for PWM pin 0~3
 
 /**
   * @brief  Initializes and enable a PWM control pin.
@@ -45,8 +45,9 @@ HAL_Pwm_Init(
     
     pPwmAdapt->pwm_id = pwm_id;
     pPwmAdapt->sel = sel;
-    timer_id = PWMTimerIdx[pwm_id];
-    pPwmAdapt->gtimer_id = timer_id;
+//    timer_id = PWMTimerIdx[pwm_id];
+//    pPwmAdapt->gtimer_id = timer_id;
+      pPwmAdapt->gtimer_id = 0;
 
     if (_FALSE == FunctionChk((pPwmAdapt->pwm_id+PWM0), pPwmAdapt->sel)) {
         return HAL_ERR_HW;
@@ -101,12 +102,19 @@ HAL_Pwm_Disable(
         DBG_PWM_ERR ("HAL_Pwm_Disable: NULL adapter\n");
         return;
     }
+    HAL_Pwm_Dinit_8195a(pPwmAdapt);
+    /*
+    if (NULL == pPwmAdapt) {
+        DBG_PWM_ERR ("HAL_Pwm_Disable: NULL adapter\n");
+        return;
+    }
     
 #ifndef CONFIG_CHIP_E_CUT
     HAL_Pwm_Disable_8195a(pPwmAdapt);
 #else
     HAL_Pwm_Disable_8195a_V04(pPwmAdapt);
 #endif
+*/
 }
 
 /**

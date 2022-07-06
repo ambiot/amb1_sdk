@@ -15,8 +15,8 @@
 
 #define SD_BLOCK_SIZE	512
 
-static int interpret_sd_result(SD_RESULT result){
-	int ret = 0;
+DSTATUS interpret_sd_status(SD_RESULT result){
+	DSTATUS ret = 0;
 	if(result == SD_OK)
 		ret = 0;
 	else if(result == SD_NODISK)
@@ -25,40 +25,60 @@ static int interpret_sd_result(SD_RESULT result){
 		ret = STA_NOINIT;
 	else if(result == SD_PROTECTED)
 		ret = STA_PROTECT;
+
+	return ret;
+}
+
+DRESULT interpret_sd_result(SD_RESULT result){
+	DRESULT ret = 0;
+	if(result == SD_OK)
+		ret = RES_OK;
+	else if(result == SD_PROTECTED)
+		ret = RES_WRPRT;
+	else if(result == SD_ERROR)
+		ret = RES_ERROR;
 	return ret;
 }
 
 DSTATUS SD_disk_status(void){
 	SD_RESULT res;
 	res = SD_Status();
-	return interpret_sd_result(res);;
+	return interpret_sd_status(res);;
 }
 
 DSTATUS SD_disk_initialize(void){
 	SD_RESULT res;
 	res = SD_Init();
-	return interpret_sd_result(res);
+	return interpret_sd_status(res);
 }
 
 /* Read sector(s) --------------------------------------------*/
 DRESULT SD_disk_read(BYTE *buff, DWORD sector, UINT count){
-	SD_RESULT res;
+	DRESULT res;
+	char retry_cnt = 0;
 
-	res = SD_ReadBlocks(sector, buff, count);
-
-	//__rtl_memDump_v1_00(buff, 512*count, "MMC_disk_read:");
+	do{
+		res = interpret_sd_result(SD_ReadBlocks(sector, buff, count));
+		if(++retry_cnt>=3)
+			break;
+	}while(res != RES_OK);
 	
-	return interpret_sd_result(res);
+	return res;
 }
 
 /* Write sector(s) --------------------------------------------*/
 #if _USE_WRITE == 1
 DRESULT SD_disk_write(const BYTE *buff, DWORD sector, UINT count){
-	SD_RESULT res;
+	DRESULT res;
+	char retry_cnt = 0;
 
-	res = SD_WriteBlocks(sector, buff, count);
+	do{
+		res = interpret_sd_result(SD_WriteBlocks(sector, buff, count));
+		if(++retry_cnt>=3)
+			break;
+	}while(res != RES_OK);
 	
-	return interpret_sd_result(res);
+	return res;
 }
 #endif
 

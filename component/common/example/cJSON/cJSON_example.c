@@ -42,6 +42,8 @@ static void gen_json_data(int i, int r, int g, int b)
 
 		iot_json = cJSON_Print(IOTJSObject);
 		cJSON_Delete(IOTJSObject);
+		if(NULL != iot_json)
+			free(iot_json);
 		
 	}
 

@@ -12,11 +12,28 @@ void* __wrap_malloc( size_t size )
 
 void* __wrap_realloc( void *p, size_t size )
 {
-    return pvPortReAalloc(p, size);
+    return pvPortReAlloc(p, size);
 }
 
 void __wrap_free( void *p )
 {
     vPortFree(p);
 }
+
+/* For GCC stdlib */
+void* __wrap__malloc_r( void * reent, size_t size )
+{
+    return pvPortMalloc(size);
+}
+
+void* __wrap__realloc_r( void * reent, void *p, size_t size )
+{
+    return pvPortReAlloc(p, size);
+}
+
+void __wrap__free_r( void * reent, void *p )
+{
+    vPortFree(p);
+}
+
 #endif

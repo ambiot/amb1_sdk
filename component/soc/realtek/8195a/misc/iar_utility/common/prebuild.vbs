@@ -12,4 +12,4 @@ End If
 
 Set WshShell = WScript.CreateObject("WScript.Shell")
 
-WshShell.Run "cmd /c """"" & WScript.Arguments(0) & "\..\..\..\component\soc\realtek\8195a\misc\iar_utility\common\prebuild.bat"" """ & WScript.Arguments(0) & """""", 0, true
+WshShell.Run "cmd /c """"" & WScript.Arguments(0) & "\..\..\..\component\soc\realtek\8195a\misc\iar_utility\common\prebuild.bat"" """+WScript.Arguments(0)+""" "+WScript.Arguments(1)+"""", 0, true

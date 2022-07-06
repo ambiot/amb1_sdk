@@ -1,11 +1,26 @@
-/*
-	X-Modem Header File
-
-	1999/09/03	sprite, support Xmode Tx & Rx
-*/
+ /**
+  ******************************************************************************
+  * @file    xmodem.h
+  * @author
+  * @version
+  * @brief   This file provides user interface for xmodem, support Xmode Tx & Rx
+  ******************************************************************************
+  * @attention
+  *
+  * This module is a confidential and proprietary property of RealTek and possession or use of this module requires written permission of RealTek.
+  *
+  * Copyright(c) 2016, Realtek Semiconductor Corporation. All rights reserved.
+  ****************************************************************************** 
+  */
 
 #ifndef	_XMODE_H_
 #define	_XMODE_H_
+
+/** @addtogroup xmodem       XMODEM
+ *  @ingroup    hal
+ *  @brief      Xmodem TX & RX function
+ *  @{
+ */
 
 #include <basic_types.h>
 #if defined(CONFIG_PLATFORM_8711B)
@@ -81,9 +96,34 @@ typedef struct _XMODEM_CTRL_ {
 
 typedef u32 (*RxFrameHandler_t)(char *ptr,  u32 frame_num, u32 frame_size);
 
+/**
+  * @brief  Initial comport, buffer, buffer handler
+  * @param  pXMCtrl           : xmodem comport
+  * @param  FrameBuf          : pointer of RX frame buffer
+  * @param  RxFrameHdl        : callback of receiving RX frame
+  * @return XMODEM_OK         : initial OK
+            XMODEM_NO_SESSION : initial failed, xmodem is using
+  */
 extern s16 xModemStart(XMODEM_CTRL *pXMCtrl, char *FrameBuf, RxFrameHandler_t RxFrameHdl);
+
+/**
+  * @brief  Close xmodem comport
+  * @param  pXMCtrl           : xmodem comport
+  * @return XMODEM_OK         : OK
+  *         XMODEM_NO_SESSION : Close xmodem failed, xmodem has already closed
+  */
 extern s16 xModemEnd(XMODEM_CTRL *pXMCtrl);
+
+/**
+  * @brief  xmodem receive frame
+  * @param  pXMCtrl    : xmodem comport
+  * @param  MaxSize    : the maximum size of total RX frame
+  * @return successful : return total RX frame length
+  *         failed     : return MaxSize+1
+  */
 extern s32 xModemRxBuffer(XMODEM_CTRL *pXMCtrl, s32 MaxSize);
+
+/*\@}*/
 
 #endif /* _XMODE_H_ */
 

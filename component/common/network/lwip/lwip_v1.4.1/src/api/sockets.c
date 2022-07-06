@@ -55,6 +55,9 @@
 #if LWIP_CHECKSUM_ON_COPY
 #include "lwip/inet_chksum.h"
 #endif
+#if LWIP_MTU_ADJUST
+#include "lwip/tcp_impl.h"
+#endif
 
 #include <string.h>
 
@@ -1859,6 +1862,12 @@ lwip_getsockopt_internal(void *arg)
   sys_sem_signal(&sock->conn->op_completed);
 }
 
+int lwip_getsocklasterr(int s)
+{
+  struct lwip_sock *sock = get_socket(s);
+  return sock->err;
+}
+
 int
 lwip_setsockopt(int s, int level, int optname, const void *optval, socklen_t optlen)
 {
@@ -2277,6 +2286,117 @@ lwip_setsockopt_internal(void *arg)
   }  /* switch (level) */
   sys_sem_signal(&sock->conn->op_completed);
 }
+
+
+#if LWIP_MTU_ADJUST
+extern void tcp_depart_segment(struct tcp_pcb *pcb);
+
+static
+void lwip_setsockmtu(void *arg)
+{
+	struct lwip_sock *sock;
+	const void *optval;
+	struct lwip_setgetsockopt_data *data;
+
+	LWIP_ASSERT("arg != NULL", arg != NULL);
+	data = (struct lwip_setgetsockopt_data*)arg;
+
+	//printf("---------%s, level: %d, optname:%d\n", __func__, data->level, data->optname);
+
+	if(data->level != IPPROTO_TCP || data->optname != TCP_MAXSEG){
+		return;
+	}
+	
+	sock = data->sock;
+	optval = data->optval;
+
+	sock->conn->pcb.tcp->mss = (u16_t)(*(int*)optval);	
+	
+	LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_setsockmtu(%d, IPPROTO_TCP, TCP_MAXSEG) -> %"U32_F"\n",
+	          data->s, sock->conn->pcb.tcp->mss));	
+
+	struct tcp_pcb *pcb = data->sock->conn->pcb.tcp;
+	if(pcb == NULL)
+	{
+		printf("\r\nlwip_setsockmtu pcb == NULL\r\n");	
+	}
+		
+  	tcp_depart_segment(pcb);
+
+}
+
+int
+lwip_findsocket(struct pbuf *p)
+{
+	int i;
+	struct tcp_pcb *pcb;
+	struct ip_hdr *iphdr;
+	struct tcp_hdr *tcphdr;
+
+	iphdr = p->payload;
+	tcphdr = (struct tcp_hdr *)((u8_t *)p->payload + IPH_HL(iphdr) * 4);
+	
+	for(i = 0; i < NUM_SOCKETS; i++){
+		if((sockets[i].conn != NULL) && (sockets[i].conn->type == NETCONN_TCP)){
+			pcb = sockets[i].conn->pcb.tcp;
+			if((pcb->remote_port == ntohs(tcphdr->dest)) &&
+				(pcb->local_port == ntohs(tcphdr->src)) &&
+				ip_addr_cmp(&(pcb->remote_ip), &(iphdr->dest)) &&
+				ip_addr_cmp(&(pcb->local_ip), &(iphdr->src))){
+
+				return i;
+			}
+		}
+	}
+	return -1;
+}
+
+struct lwip_setgetsockopt_data mtu_data;
+int mtu;
+
+int lwip_frag_needed(struct pbuf *p, int new_mtu)
+{
+	int s;
+	s= lwip_findsocket(p);
+	int old_mtu;
+
+	struct lwip_sock *sock = get_socket(s);
+	err_t err = ERR_OK;
+	int optlen = sizeof(int);
+
+	if(s < 0)
+		return -1;
+
+	old_mtu = sockets[s].conn->pcb.tcp->mss;
+	//printf("socket:%d, old_mtu:%d, new_mtu:%d\n", s, old_mtu, new_mtu);
+	
+	if(old_mtu > (new_mtu - 48)){
+		mtu = new_mtu - 48;
+		//lwip_setsockopt(s, IPPROTO_TCP, TCP_MAXSEG, (char*)&mtu, sizeof(int));
+
+		if (!sock) {
+			return -1;
+		}
+
+		mtu_data.sock = sock;
+		//mtu_data.s = s;
+		mtu_data.level = IPPROTO_TCP;
+		mtu_data.optname = TCP_MAXSEG;
+		mtu_data.optval = (void*)&mtu;
+		//mtu_data.optlen = &optlen;
+		mtu_data.err = err;
+		tcpip_callback(lwip_setsockmtu, &mtu_data);
+		err = mtu_data.err;
+
+		sock_set_errno(sock, err);
+		return err ? -1 : 0;
+
+		
+	}
+	return 0;
+}
+#endif
+
 
 int
 lwip_ioctl(int s, long cmd, void *argp)

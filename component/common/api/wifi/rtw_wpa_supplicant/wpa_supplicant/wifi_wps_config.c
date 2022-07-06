@@ -37,6 +37,7 @@ struct dev_credential {
 
 typedef struct {
 	char *target_ssid;
+	unsigned char *target_bssid;
 	u16 config_method;
 	_sema scan_sema;
 	int isoverlap;
@@ -239,11 +240,11 @@ static TaskHandle_t ap_wps_task = NULL;
 
 void wps_check_and_show_connection_info(void)
 {
-	rtw_wifi_setting_t setting;	
-#if CONFIG_LWIP_LAYER 
+	rtw_wifi_setting_t setting;
+#if CONFIG_LWIP_LAYER
 	/* Start DHCP Client */
-	LwIP_DHCP(0, DHCP_START);		
-#endif	
+	LwIP_DHCP(0, DHCP_START);
+#endif
 	wifi_get_setting(WLAN0_NAME, &setting);
 	wifi_show_setting(WLAN0_NAME, &setting);
 
@@ -255,7 +256,7 @@ void wps_check_and_show_connection_info(void)
 static void wps_config_wifi_setting(rtw_network_info_t *wifi, struct dev_credential *dev_cred)
 {
 	printf("\r\nwps_config_wifi_setting\n");
-	//memcpy((void *)wifi->ssid, (void *)dev_cred->ssid, dev_cred->ssid_len); 
+	//memcpy((void *)wifi->ssid, (void *)dev_cred->ssid, dev_cred->ssid_len);
 	strcpy((char*)wifi->ssid.val, (char*)&dev_cred->ssid[0]);
 	printf("\r\nwps_wifi.ssid = %s\n", wifi->ssid.val);
 	wifi->ssid.len = dev_cred->ssid_len;
@@ -276,7 +277,11 @@ static void wps_config_wifi_setting(rtw_network_info_t *wifi, struct dev_credent
 		}
 	}
 	else if(dev_cred->auth_type & (WPS_AUTH_TYPE_WPA_PERSONAL | WPS_AUTH_TYPE_WPA_ENTERPRISE)) {
-		if(dev_cred->encr_type & WPS_ENCR_TYPE_AES) {
+		if((dev_cred->encr_type & WPS_ENCR_TYPE_AES) && (dev_cred->encr_type & WPS_ENCR_TYPE_TKIP)) {
+			printf("\r\nsecurity_type = RTW_SECURITY_WPA_MIXED_PSK\n");
+			wifi->security_type = RTW_SECURITY_WPA_MIXED_PSK;
+		}
+		else if(dev_cred->encr_type & WPS_ENCR_TYPE_AES) {
 			printf("\r\nsecurity_type = RTW_SECURITY_WPA_AES_PSK\n");
 			wifi->security_type = RTW_SECURITY_WPA_AES_PSK;
 		}
@@ -305,9 +310,12 @@ static void wps_config_wifi_setting(rtw_network_info_t *wifi, struct dev_credent
 	wifi->password_len = dev_cred->key_len;
 	printf("\r\nwps_wifi.password_len = %d", wifi->password_len);
 	//xSemaphoreGive(wps_reconnect_semaphore);
-	//printf("\r\nrelease wps_reconnect_semaphore");			
+	//printf("\r\nrelease wps_reconnect_semaphore");
 }
-
+#if defined(CONFIG_AUTO_RECONNECT) && CONFIG_AUTO_RECONNECT
+extern char wps_profile_ssid[33];
+extern char wps_profile_password[65];
+#endif
 static int wps_connect_to_AP_by_certificate(rtw_network_info_t *wifi)
 {
 	int retry_count = WPS_CONNECT_RETRY_COUNT, ret;
@@ -319,6 +327,7 @@ static int wps_connect_to_AP_by_certificate(rtw_network_info_t *wifi)
 	printf("\r\nssid_len = %d\n", wifi->ssid.len);
 	printf("\r\npassword_len = %d\n", wifi->password_len);
 	while (1) {
+        rtw_msleep_os(1000);  //When start wps with OPEN AP, AP will send a disassociate frame after STA connected, need reconnect here.
 		ret = wifi_connect((char*)wifi->ssid.val,
 						 wifi->security_type,
 						 (char*)wifi->password,
@@ -332,6 +341,13 @@ static int wps_connect_to_AP_by_certificate(rtw_network_info_t *wifi)
 			if(RTW_SUCCESS == wifi_is_connected_to_ap( )){
 				//printf("\r\n[WPS]Ready to tranceive!!\n");
 				wps_check_and_show_connection_info();
+
+#if defined(CONFIG_AUTO_RECONNECT) && CONFIG_AUTO_RECONNECT
+				memset(wps_profile_ssid,0,33);
+				memset(wps_profile_password,0,65);
+				strncpy(wps_profile_ssid, wifi->ssid.val, wifi->ssid.len);
+				strncpy(wps_profile_password, wifi->password, wifi->password_len);
+#endif
 				break;
 			}
 		}
@@ -349,7 +365,7 @@ static int wps_connect_to_AP_by_certificate(rtw_network_info_t *wifi)
 static int wps_connect_to_AP_by_open_system(char *target_ssid)
 {
 	int retry_count = 3, ret;
-	
+
 	if (target_ssid != NULL) {
 		rtw_msleep_os(500);	//wait scan complete.
 		while (1) {
@@ -378,6 +394,39 @@ static int wps_connect_to_AP_by_open_system(char *target_ssid)
 	return 0;
 }
 
+static int wps_connect_to_AP_by_open_system_with_bssid(char *target_ssid, unsigned char *target_bssid)
+{
+	int retry_count = 3, ret;
+
+	if ((target_ssid != NULL)&&(target_bssid != NULL)) {
+		rtw_msleep_os(500);	//wait scan complete.
+		while (1) {
+			ret = wifi_connect_bssid(target_bssid,
+						target_ssid,
+						RTW_SECURITY_OPEN,
+						NULL,
+                        ETH_ALEN,
+						strlen(target_ssid),
+						0,
+						0,
+						NULL);
+			if (ret == RTW_SUCCESS) {
+			  	//wps_check_and_show_connection_info();
+				break;
+			}
+			if (retry_count == 0) {
+				printf("\r\n[WPS]Join bss failed\n");
+				return -1;
+			}
+			retry_count --;
+		}
+	} else {
+		printf("\r\n[WPS]Target SSID or BSSID is NULL\n");
+	}
+
+	return 0;
+}
+
 static void process_wps_scan_result( rtw_scan_result_t* record, void * user_data )
 {
 	u8 zero_mac[ETH_ALEN] = {0};
@@ -389,8 +438,11 @@ static void process_wps_scan_result( rtw_scan_result_t* record, void * user_data
 				wps_password_id = record->wps_type;
 				if (++wps_arg->isoverlap == 0) {
 					memcpy(&wps_arg->target_ssid[0], record->SSID.val, record->SSID.len);
+					memcpy(wps_arg->target_bssid, record->BSSID.octet, ETH_ALEN);
 					wps_arg->target_ssid[record->SSID.len] = '\0';
-					printf("\r\n[pbc]Record first triger wps AP = %s\n", wps_arg->target_ssid);
+						printf("\r\n[pbc]Record first triger wps AP = %s, %02x:%02x:%02x:%02x:%02x:%02x\n",\
+								wps_arg->target_ssid,wps_arg->target_bssid[0],wps_arg->target_bssid[1],wps_arg->target_bssid[2],\
+								wps_arg->target_bssid[3],wps_arg->target_bssid[4],wps_arg->target_bssid[5]);
 				}
 			}
 		} else if (wps_arg->config_method == WPS_CONFIG_DISPLAY || wps_arg->config_method == WPS_CONFIG_KEYPAD) {
@@ -398,8 +450,11 @@ static void process_wps_scan_result( rtw_scan_result_t* record, void * user_data
 				wps_arg->isoverlap = 0;
 				wps_password_id = record->wps_type;
 				memcpy(&wps_arg->target_ssid[0], record->SSID.val, record->SSID.len);
+				memcpy(wps_arg->target_bssid, record->BSSID.octet, ETH_ALEN);
 				wps_arg->target_ssid[record->SSID.len] = '\0';
-				printf("\r\n[pin]find out first triger wps AP = %s\n", wps_arg->target_ssid);
+				printf("\r\n[pin]find out first triger wps AP = %s, %02x:%02x:%02x:%02x:%02x:%02x\n",\
+							wps_arg->target_ssid,wps_arg->target_bssid[0],wps_arg->target_bssid[1],wps_arg->target_bssid[2],\
+							wps_arg->target_bssid[3],wps_arg->target_bssid[4],wps_arg->target_bssid[5]);
 			}
 		}
 	}
@@ -572,7 +627,7 @@ static rtw_result_t wps_scan_result_handler( rtw_scan_handler_result_t* malloced
 extern void wifi_scan_each_report_hdl( char* buf, int buf_len, int flags, void* userdata);
 extern void wifi_scan_done_hdl( char* buf, int buf_len, int flags, void* userdata);
 
-static int wps_find_out_triger_wps_AP(char *target_ssid, u16 config_method)
+static int wps_find_out_triger_wps_AP(char *target_ssid, unsigned char *target_bssid, u16 config_method)
 {
 	internal_wps_scan_handler_arg_t wps_arg = {0};
 
@@ -581,6 +636,8 @@ static int wps_find_out_triger_wps_AP(char *target_ssid, u16 config_method)
 	wps_arg.isoverlap = -1;
 	wps_arg.config_method = config_method;
 	wps_arg.target_ssid = target_ssid;
+	wps_arg.target_bssid = target_bssid;
+
 	rtw_init_sema(&wps_arg.scan_sema, 0);
 	if(wps_arg.scan_sema == NULL) return RTW_ERROR;
 
@@ -596,7 +653,7 @@ static int wps_find_out_triger_wps_AP(char *target_ssid, u16 config_method)
 
 exit:
 	rtw_free_sema(&wps_arg.scan_sema);
-	
+
 	return wps_arg.isoverlap;
 }
 
@@ -682,8 +739,9 @@ static void wps_filter_cred_by_scan(struct dev_credential *dev_cred, int cred_cn
 int wps_start(u16 wps_config, char *pin, u8 channel, char *ssid)
 {
 	struct dev_credential *dev_cred;
-	rtw_network_info_t wifi = {0}; 
+	rtw_network_info_t wifi = {0};
 	char target_ssid[64];
+	unsigned char target_bssid[ETH_ALEN];
 	int is_overlap = -1;
 	u32 start_time = rtw_get_current_time();
 	int ret = 0;
@@ -698,16 +756,17 @@ int wps_start(u16 wps_config, char *pin, u8 channel, char *ssid)
 	}
 
 	memset(target_ssid, 0, 64);
+	memset(target_bssid, 0, ETH_ALEN);
 	wps_stop_notified = 0;
 
-	if((wps_config != WPS_CONFIG_PUSHBUTTON) 
+	if((wps_config != WPS_CONFIG_PUSHBUTTON)
 		&& (wps_config != WPS_CONFIG_DISPLAY)
 		&& (wps_config != WPS_CONFIG_KEYPAD)){
 		printf("\n\rWPS: Wps method(%d) is wrong. Not triger WPS.\n", wps_config);
 		return -1;
 	}
 	config_method = wps_config;
-	
+
 	if(wps_config == WPS_CONFIG_DISPLAY
 		|| wps_config == WPS_CONFIG_KEYPAD) {
 		if(pin)
@@ -717,7 +776,7 @@ int wps_start(u16 wps_config, char *pin, u8 channel, char *ssid)
 			return -1;
 		}
 	}
-	
+
 	if(!ssid)	{
 #if CONFIG_ENABLE_WPS_DISCOVERY
 		reset_discovery_phase();
@@ -729,8 +788,8 @@ int wps_start(u16 wps_config, char *pin, u8 channel, char *ssid)
 				reset_discovery_ssid();
 #endif
 				wpas_wps_enrollee_init_probe_ie(wps_config);
-				is_overlap = wps_find_out_triger_wps_AP(&target_ssid[0], wps_config);
-				if ((is_overlap == 0) || (is_overlap > 0)) 
+				is_overlap = wps_find_out_triger_wps_AP(&target_ssid[0], &target_bssid[0], wps_config);
+				if ((is_overlap == 0) || (is_overlap > 0))
 					break;
 #if CONFIG_ENABLE_WPS_DISCOVERY
 				if((wps_config == WPS_CONFIG_DISPLAY) || (wps_config == WPS_CONFIG_KEYPAD)) {
@@ -755,7 +814,7 @@ int wps_start(u16 wps_config, char *pin, u8 channel, char *ssid)
 	}else{
 		rtw_memcpy(target_ssid, ssid, strlen(ssid));
 	}
-	
+
 	if (queue_for_credential != NULL) {
 		os_xqueue_delete(queue_for_credential);
 		queue_for_credential = NULL;
@@ -771,7 +830,14 @@ int wps_start(u16 wps_config, char *pin, u8 channel, char *ssid)
 	wpas_wps_enrollee_init_probe_ie(wps_config);
 	wpas_wps_enrollee_init_assoc_ie();
 	wifi_set_wps_phase(ENABLE);
-	ret = wps_connect_to_AP_by_open_system(target_ssid);
+    if(!ssid)
+    {
+	    ret = wps_connect_to_AP_by_open_system_with_bssid(target_ssid,target_bssid);
+    }
+    else
+    {
+        ret = wps_connect_to_AP_by_open_system(target_ssid);
+    }
 	if(ret < 0){
 		printf("\n\rWPS: WPS Fail!!\n");
 		goto exit;
@@ -813,7 +879,9 @@ int wps_start(u16 wps_config, char *pin, u8 channel, char *ssid)
 				cur_security = RTW_SECURITY_WPA2_TKIP_PSK;
 		}
 		else if(dev_cred[cur_index].auth_type & (WPS_AUTH_TYPE_WPA_PERSONAL | WPS_AUTH_TYPE_WPA_ENTERPRISE)) {
-			if(dev_cred[cur_index].encr_type & WPS_ENCR_TYPE_AES)
+			if((dev_cred[cur_index].encr_type & WPS_ENCR_TYPE_AES) && (dev_cred[cur_index].encr_type & WPS_ENCR_TYPE_TKIP))
+				cur_security = RTW_SECURITY_WPA_MIXED_PSK;
+			else if(dev_cred[cur_index].encr_type & WPS_ENCR_TYPE_AES)
 				cur_security = RTW_SECURITY_WPA_AES_PSK;
 			else if(dev_cred[cur_index].encr_type & WPS_ENCR_TYPE_TKIP)
 				cur_security = RTW_SECURITY_WPA_TKIP_PSK;
@@ -838,8 +906,19 @@ int wps_start(u16 wps_config, char *pin, u8 channel, char *ssid)
 		wifi_set_wps_phase(DISABLE);
 #if defined(CONFIG_WIFI_IND_USE_THREAD) && CONFIG_WIFI_IND_USE_THREAD
 		vTaskDelay(10); //Wait WIFI_DISCONNECT_EVENT and WIFI_EVENT_WPS_FINISH to be processed which sent by OnDeauth
+#endif
+
+#ifdef CONFIG_SAE_SUPPORT
+		if(wext_get_support_wpa3()==1){
+			wext_set_support_wpa3(DISABLE);
+			ret = wps_connect_to_AP_by_certificate(&wifi);
+			wext_set_support_wpa3(ENABLE);
+		}else
 #endif		
-		ret = wps_connect_to_AP_by_certificate(&wifi);
+		{
+			ret = wps_connect_to_AP_by_certificate(&wifi);
+		}
+
 		os_free(dev_cred,0);
 		goto exit1;
 	} else {
@@ -883,16 +962,16 @@ static int ap_wps_start(u16 wps_config, char *pin)
 		queue_for_credential = NULL;
 	}
 
-	queue_for_credential = os_xqueue_create(1, sizeof(authorized_mac));	
+	queue_for_credential = os_xqueue_create(1, sizeof(authorized_mac));
 	if(!queue_for_credential)
 		return -1;
-	
+
 	wifi_reg_event_handler(WIFI_EVENT_STA_WPS_START, wpas_wsc_sta_wps_start_hdl, NULL);
 	wifi_reg_event_handler(WIFI_EVENT_WPS_FINISH, wpas_wsc_server_wps_finish_hdl, NULL);
 	wifi_reg_event_handler(WIFI_EVENT_EAPOL_RECVD, wpas_wsc_eapol_recvd_hdl, NULL);
 
 	wifi_set_wps_phase(ENABLE);
-	
+
 	if(wps_config == WPS_CONFIG_KEYPAD)
 	{
 		pin_val = atoi(pin);
@@ -922,13 +1001,13 @@ static int ap_wps_start(u16 wps_config, char *pin)
 exit:
 	wifi_set_wps_phase(0);
 	os_xqueue_delete(queue_for_credential);
-	queue_for_credential = NULL;	
+	queue_for_credential = NULL;
 	printf("\n\rWPS-AP: Finished!\n");
-	
+
 	wifi_unreg_event_handler(WIFI_EVENT_STA_WPS_START, wpas_wsc_sta_wps_start_hdl);
 	wifi_unreg_event_handler(WIFI_EVENT_WPS_FINISH, wpas_wsc_server_wps_finish_hdl);
 	wifi_unreg_event_handler(WIFI_EVENT_EAPOL_RECVD, wpas_wsc_eapol_recvd_hdl);
-	
+
 	return ret;
 }
 
@@ -942,7 +1021,7 @@ static void wifi_start_ap_wps_thread_hdl( void *param)
 
 void wifi_start_ap_wps_thread(u16 config_methods, char *pin)
 {
-	if((config_methods != WPS_CONFIG_PUSHBUTTON) 
+	if((config_methods != WPS_CONFIG_PUSHBUTTON)
 		&& (config_methods != WPS_CONFIG_DISPLAY)
 		&& (config_methods != WPS_CONFIG_KEYPAD)){
 		printf("\n\rWPS-AP: Wps method(%d) is wrong. Not triger WPS.\n", config_methods);
@@ -958,7 +1037,7 @@ void wifi_start_ap_wps_thread(u16 config_methods, char *pin)
 			return;
 		}
 	}
-	if(ap_wps_task != NULL){ //push item to wait queue to finish last ap_wps task 
+	if(ap_wps_task != NULL){ //push item to wait queue to finish last ap_wps task
 		printf("\n\rWPS-AP: Wait for last ap_wps task exiting...\n");
 		if(queue_for_credential)
 			os_xqueue_send(queue_for_credential, NULL, 0);
@@ -973,7 +1052,7 @@ void wifi_start_ap_wps_thread(u16 config_methods, char *pin)
 
 #endif //CONFIG_ENABLE_WPS_AP
 
-void wps_judge_staion_disconnect(void) 
+void wps_judge_staion_disconnect(void)
 {
 	int mode = 0;
 	unsigned char ssid[33];
@@ -993,14 +1072,14 @@ void wps_judge_staion_disconnect(void)
 	case IW_MODE_INFRA:		//In STA mode
 		if(wext_get_ssid(WLAN0_NAME, ssid) > 0)
 			wifi_disconnect();
-	}	
+	}
 }
 
 void cmd_wps(int argc, char **argv)
 {
 	int ret = -1;
 	wps_judge_staion_disconnect();
-	
+
 	if((argc == 2 || argc == 3 ) && (argv[1] != NULL)){
 		if(strcmp(argv[1],"pin") == 0){
 			unsigned int pin_val = 0;
@@ -1057,7 +1136,7 @@ void cmd_ap_wps(int argc, char **argv)
 		printf("\n\rOnly valid for IW_MODE_MASTER!\n\r");
 		return;
 	}
-		
+
 	if((argc == 2 || argc == 3) && (argv[1] != NULL)) {
 		if (strcmp(argv[1],"pin") == 0 ) {
 			unsigned int pin_val = 0;

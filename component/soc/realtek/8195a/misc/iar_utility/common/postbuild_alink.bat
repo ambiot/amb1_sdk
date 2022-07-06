@@ -1,5 +1,5 @@
 set tooldir=%1\..\..\..\component\soc\realtek\8195a\misc\iar_utility\common\tools
-set alinkdir=%1\..\..\..\component\common\application\alink
+set alinkdir=%1\..\..\..\component\common\application\alink\alink1.1
 
 ::echo %tooldir% > %alinkdir%\test.txt
 ::echo %alinkdir% >> %alinkdir%\test.txt

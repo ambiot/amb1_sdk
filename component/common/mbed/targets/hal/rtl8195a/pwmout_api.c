@@ -29,10 +29,10 @@ static const PinMap PinMap_PWM[] = {
     {PC_2,  RTL_PIN_PERI(PWM2, 2, S1), RTL_PIN_FUNC(PWM2, S1)},
     {PC_3,  RTL_PIN_PERI(PWM3, 3, S1), RTL_PIN_FUNC(PWM3, S1)},
 
-    {PD_3,  RTL_PIN_PERI(PWM0, 0, S2), RTL_PIN_FUNC(PWM0, S2)},
-    {PD_4,  RTL_PIN_PERI(PWM1, 1, S2), RTL_PIN_FUNC(PWM1, S2)},
-    {PD_5,  RTL_PIN_PERI(PWM2, 2, S2), RTL_PIN_FUNC(PWM2, S2)},
-    {PD_6,  RTL_PIN_PERI(PWM3, 3, S2), RTL_PIN_FUNC(PWM3, S2)},
+    {PD_4,  RTL_PIN_PERI(PWM0, 0, S2), RTL_PIN_FUNC(PWM0, S2)},
+    {PD_5,  RTL_PIN_PERI(PWM1, 1, S2), RTL_PIN_FUNC(PWM1, S2)},
+    {PD_6,  RTL_PIN_PERI(PWM2, 2, S2), RTL_PIN_FUNC(PWM2, S2)},
+    {PD_7,  RTL_PIN_PERI(PWM3, 3, S2), RTL_PIN_FUNC(PWM3, S2)},
 
     {PE_0,  RTL_PIN_PERI(PWM0, 0, S3), RTL_PIN_FUNC(PWM0, S3)},
     {PE_1,  RTL_PIN_PERI(PWM1, 1, S3), RTL_PIN_FUNC(PWM1, S3)},
@@ -70,8 +70,8 @@ void pwmout_init(pwmout_t* obj, PinName pin)
         DBG_PWM_ERR("pwmout_init Err!\n");
         return;
     }
-    pwmout_period_us(obj, 20000); // 20 ms per default
-    HAL_Pwm_Enable(&obj->pwm_hal_adp);
+    //pwmout_period_us(obj, 20000); // 20 ms per default
+    //HAL_Pwm_Enable(&obj->pwm_hal_adp);
 }
 
 void pwmout_free(pwmout_t* obj) 
@@ -90,6 +90,7 @@ void pwmout_write(pwmout_t* obj, float percent)
 
     obj->pulse = (uint32_t)((float)obj->period * percent);
     HAL_Pwm_SetDuty(&obj->pwm_hal_adp, obj->period, obj->pulse);
+    HAL_Pwm_Enable(&obj->pwm_hal_adp);
 }
 
 float pwmout_read(pwmout_t* obj) 

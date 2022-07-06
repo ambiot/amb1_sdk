@@ -95,14 +95,14 @@ DRAM_DEVICE_INFO SdrDramInfo = {
 #define SPEC_MAX_TAP 0xFF
 #endif
 #else
-#define MAX_TAP_DLY 99		// 0~99
+#define MAX_TAP_DLY 0xC//99		// 0~99
 #define SPEC_MAX_TAP 99
 #define WINDOW_COMBIN		// combine window [0~a] and [b~99] (for asic mode)
 #endif
  
 #define TAP_DLY 0x1
 #define REC_NUM 512
- 
+static u8 retry_count = 0;
  
 u32 SdrControllerInit(VOID);
 VOID DramInit(DRAM_DEVICE_INFO *);
@@ -342,11 +342,47 @@ SdrTestApp(
 
 HAL_SDRC_TEXT_SECTION  
 VOID
+SdrRecover(
+VOID
+){
+    u32 delay_count;
+
+    /*Turn off LDO 2.5V and let the voltage drops to below 1.1V, SDRAM will reset*/
+    LDO25M_CTRL(OFF);
+
+    /*Delay about 900 us*/
+	for(delay_count=0; delay_count < 24000; delay_count++) {
+		asm(" nop");
+	}
+    
+    LDO25M_CTRL(ON);
+    
+    MEM_CTRL_FCTRL(OFF);
+    
+    DBG_8195A("Reset SDRAM.\n");
+}
+
+HAL_SDRC_TEXT_SECTION  
+VOID
 SdrCtrlInit(
 VOID
 ){
+    u32 delay_count;
+
     HAL_WRITE32(0x40000000, 0x40,
                 ((HAL_READ32(0x40000000, 0x40)&0xfffff)|0xe00000));
+
+    LDO25M_CTRL(ON);
+    
+    LDO25M_CTRL(OFF);
+
+    /*Delay about 300 us*/
+	for(delay_count = 0; delay_count < 2000; delay_count++) {
+		asm(" nop");
+	}
+
+    HAL_WRITE32(0x40000000, 0x40,
+                        ((HAL_READ32(0x40000000, 0x40)&0xfffff)|0x300000));
     LDO25M_CTRL(ON);
 }
 
@@ -357,9 +393,6 @@ VOID
 )
 {
     DBG_8195A("SDR Controller Init\n");
-
-    HAL_WRITE32(0x40000000, 0x40,
-                        ((HAL_READ32(0x40000000, 0x40)&0xfffff)|0x300000));
 
     SRAM_MUX_CFG(0x2);
 

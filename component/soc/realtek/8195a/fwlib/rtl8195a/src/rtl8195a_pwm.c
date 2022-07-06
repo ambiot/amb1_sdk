@@ -18,6 +18,9 @@
 extern HAL_PWM_ADAPTER PWMPin[];
 
 extern HAL_TIMER_OP HalTimerOp;
+const u8 PWMTimerIdx[MAX_PWM_CTRL_PIN]= {2,3,4,5};  // the G-timer ID used for PWM pin 0~3
+HAL_PWM_TIMER PWMTimer[MAX_PWM_CTRL_PIN];
+
 
 /**
   * @brief  Configure a G-Timer to generate a tick with certain time.
@@ -34,31 +37,110 @@ Pwm_SetTimerTick_8195a(
 )
 {
     TIMER_ADAPTER TimerAdapter;
+    u32 i,j;
+    u8 count=0;
 
+    //HalTimerDeInit(&TimerAdapter);
 
     if (tick_time <= MIN_GTIMER_TIMEOUT) {
         tick_time = MIN_GTIMER_TIMEOUT;
     }
     else {
-        tick_time = (((tick_time-1)/TIMER_TICK_US)+1) * TIMER_TICK_US;
+        tick_time = (((tick_time-1)/MIN_GTIMER_TIMEOUT)+1) * MIN_GTIMER_TIMEOUT;
     }
-    
-    // Initial a G-Timer for the PWM pin
-    if (pPwmAdapt->tick_time != tick_time) {
-        TimerAdapter.IrqDis = 1;    // Disable Irq
-        TimerAdapter.IrqHandle.IrqFun = (IRQ_FUN) NULL;
-        TimerAdapter.IrqHandle.IrqNum = TIMER2_7_IRQ;
-        TimerAdapter.IrqHandle.Priority = 10;
-        TimerAdapter.IrqHandle.Data = (u32)NULL;
-        TimerAdapter.TimerId = pPwmAdapt->gtimer_id;
-        TimerAdapter.TimerIrqPriority = 0;
-        TimerAdapter.TimerLoadValueUs = tick_time-1;
-        TimerAdapter.TimerMode = 1; // auto-reload with user defined value
 
-        HalTimerOp.HalTimerInit((VOID*) &TimerAdapter);
+    if (pPwmAdapt->gtimer_id == 0xFF) // initial to a invalid value means no g-timer ID
+    {
+        // Initial a G-Timer for the PWM pin
+        if (pPwmAdapt->tick_time != tick_time) {
+            // de-reference to old timer
+            if (pPwmAdapt->gtimer_id != 0xFF) {
+                for (i=0;i<MAX_GTIMER_NUM;i++) {
+                    if(PWMTimerIdx[i] == pPwmAdapt->gtimer_id) {
+                        PWMTimer[i].reference &= ~(1<<pPwmAdapt->pwm_id);
+                        pPwmAdapt->gtimer_id = 0xFF;
+                        pPwmAdapt->tick_time = 0;
+                        break;
+                    }
+                }
+            }
+            //DBG_PWM_ERR("Init: %d, %d\n", pPwmAdapt->tick_time, tick_time);
+            for (i=0;i<MAX_GTIMER_NUM;i++) {
+                if(PWMTimer[i].tick_time == tick_time) { // allocate same GTimer
+                    pPwmAdapt->gtimer_id = PWMTimerIdx[i];
+                    pPwmAdapt->tick_time = tick_time;
+                    PWMTimer[i].reference |= 1<<pPwmAdapt->pwm_id;
+                    //DBG_PWM_ERR("PWMTimer[%d].tick_time %d\n", i,PWMTimer[i].tick_time);
+                    return;
+                }
+            }
+            //DBG_PWM_ERR("Init: %d, %d\n", pPwmAdapt->tick_time, tick_time);       
+            // allocate a new timer for this PWM
+            for (i=0;i<MAX_GTIMER_NUM;i++) {
+                if(PWMTimer[i].reference == 0) { // allocate New GTimer
+                    pPwmAdapt->gtimer_id = PWMTimerIdx[i];
+                    pPwmAdapt->tick_time = tick_time;
+                    PWMTimer[i].tick_time = tick_time;
+                    PWMTimer[i].reference |= 1<<pPwmAdapt->pwm_id;
+
+                    TimerAdapter.IrqDis = 1;    // Disable Irq
+                    TimerAdapter.IrqHandle.IrqFun = (IRQ_FUN) NULL;
+                    TimerAdapter.IrqHandle.IrqNum = TIMER2_7_IRQ;
+                    TimerAdapter.IrqHandle.Priority = 10;
+                    TimerAdapter.IrqHandle.Data = (u32)NULL;
+                    TimerAdapter.TimerId = pPwmAdapt->gtimer_id;
+                    TimerAdapter.TimerIrqPriority = 0;
+                    TimerAdapter.TimerLoadValueUs = tick_time-1;
+                    TimerAdapter.TimerMode = 1; // auto-reload with user defined value
+                    HalTimerDeInit(&TimerAdapter);
+                    HalTimerOp.HalTimerInit((VOID*) &TimerAdapter);
+                    //DBG_PWM_ERR(" 3.PWM_ID=%d, PWMTimer[%d].ref %d\n",pPwmAdapt->pwm_id, i,PWMTimer[i].reference);
+                    //DBG_PWM_ERR("Init: %d, %d\n", pPwmAdapt->tick_time, tick_time);
+//                pPwmAdapt->tick_time = tick_time;
+                    //DBG_PWM_ERR("1.Pwm_ID=%d: Timer_Id=%d Count=%d\n", pPwmAdapt->pwm_id,pPwmAdapt->gtimer_id, tick_time);
+                    break;
+                }
+            }
+
+            if (i == MAX_GTIMER_NUM) {
+                DBG_PWM_ERR("Pwm_SetTimerTick_8195a: Failed to allocate G-Timer!\n");            
+            }
+        }
+    }
+    else // Change tick_time
+    {
+        if (pPwmAdapt->tick_time != tick_time)
+        {
+            for (i=0;i<MAX_PWM_CTRL_PIN;i++) 
+            {
+                for(j=0;j<MAX_PWM_CTRL_PIN;j++)
+                {
+                    if(( (1<<pPwmAdapt->pwm_id) & PWMTimer[i].reference)) // Include PWM_ID
+                    {
+                        if((PWMTimer[i].reference & (1<<j)) != 0) // Detect How many PWM Use same TimerID
+                        {   
+                            count++;
+                        }
+                    }
+
+                }
+                if(count > 1) // When Over 1 PWM Module use same Timer, then can't change tick_time
+                {
+                    DBG_PWM_ERR(" Over 1 PWM Module use same Timer %d, then can't change tick_time, count=%d\n", pPwmAdapt->gtimer_id,count);
+                    //DBG_PWM_ERR(" 3.PWM_ID=%d, PWMTimer[%d].ref %d\n",pPwmAdapt->pwm_id, i,PWMTimer[i].reference);
+                    count=0;
+                    return;
+                }
+                count=0;    
+            }   
+        }
+
         pPwmAdapt->tick_time = tick_time;
-        DBG_PWM_INFO("%s: Timer_Id=%d Count=%d\n", __FUNCTION__, pPwmAdapt->gtimer_id, tick_time);
-     }
+        TimerAdapter.TimerLoadValueUs = tick_time-1;
+        TimerAdapter.TimerId = pPwmAdapt->gtimer_id;
+        HalTimerReLoad(TimerAdapter.TimerId ,TimerAdapter.TimerLoadValueUs);
+        //DBG_PWM_ERR("2.Pwm_ID=%d: Timer_Id=%d Count=%d\n", pPwmAdapt->pwm_id,pPwmAdapt->gtimer_id, tick_time);
+    }
 
 }
 
@@ -95,12 +177,17 @@ HAL_Pwm_SetDuty_8195a(
         period = MIN_GTIMER_TIMEOUT*2;
     }
     else {
-        tick_time = period / 0x3fc; // a duty cycle be devided into 1020 ticks
+        tick_time = period / MAX_DEVID_TICK; // a duty cycle be devided into 1020 ticks
         if (tick_time < MIN_GTIMER_TIMEOUT) {
             tick_time = MIN_GTIMER_TIMEOUT;
         }
     }
-
+    period_tick = period/tick_time;
+    while(period_tick>1023) // Prevent period_tick over 1023
+    {
+        tick_time++;
+        period_tick = period/tick_time;
+    }
     Pwm_SetTimerTick_8195a(pPwmAdapt, tick_time);
     tick_time = pPwmAdapt->tick_time;
 #if 0    
@@ -125,15 +212,19 @@ HAL_Pwm_SetDuty_8195a(
     if (pulsewidth_tick == 0) {
 //        pulsewidth_tick = 1;
     }
-    
+    if(period_tick>1023) // Prevent period_tick over 1023
+    {
+        pulsewidth_tick = 0;
+        pulse_width = 0;
+        DBG_PWM_ERR (" Period_tick over 10 bits\n");
+    }
+    //DBG_PWM_ERR ("period_tick:(%d), tick_time:(%d),pulse_width:(%d)\n", period_tick,pPwmAdapt->tick_time,pulse_width);
     timer_id = pPwmAdapt->gtimer_id;
-
     pPwmAdapt->period = period_tick & 0x3ff;
     pPwmAdapt->pulsewidth = pulsewidth_tick & 0x3ff;
-    
+    //DBG_PWM_ERR ("period_tick_R:(%d), pulse_width_R:(%d)\n", pPwmAdapt->period,pPwmAdapt->pulsewidth);
     RegAddr = REG_PERI_PWM0_CTRL + (pwm_id*4);
     RegValue = BIT31 | (timer_id<<24) | (pulsewidth_tick<<12) | period_tick;
-    
     HAL_WRITE32(PERI_ON_BASE, RegAddr, RegValue);
 }
 
@@ -157,10 +248,11 @@ HAL_Pwm_Init_8195a(
     pwm_id = pPwmAdapt->pwm_id;
     pin_sel =  pPwmAdapt->sel;
     // Initial a G-Timer for the PWM pin
-    Pwm_SetTimerTick_8195a(pPwmAdapt, MIN_GTIMER_TIMEOUT);
+    pPwmAdapt->gtimer_id = 0xFF;    // initial to a invalid value means no g-timer ID
+    //Pwm_SetTimerTick_8195a(pPwmAdapt, MIN_GTIMER_TIMEOUT);
 
     // Set default duty ration
-    HAL_Pwm_SetDuty_8195a(pPwmAdapt, 20000, 10000);
+    //HAL_Pwm_SetDuty_8195a(pPwmAdapt, 20000, 10000);
 
     // Configure the Pin Mux
     PinCtrl((PWM0+pwm_id), pin_sel, 1);
@@ -214,6 +306,73 @@ HAL_Pwm_Disable_8195a(
         HalTimerOp.HalTimerDis(pPwmAdapt->gtimer_id);        
         pPwmAdapt->enable = 0;
     }
+}
+
+/**
+  * @brief  When Over 1 PWM Module use same Timer, then can't disable timer.
+  *
+  * @param  pwm_id: the PWM pin index
+  *
+  * @retval None
+  */
+
+void 
+HAL_Pwm_Dinit_8195a(
+    HAL_PWM_ADAPTER *pPwmAdapt
+)
+{
+    u32 i,j;
+    u8 count=0;
+    u32 pwm_id;
+    
+    pwm_id = pPwmAdapt->pwm_id;
+    for (i=0;i<MAX_PWM_CTRL_PIN;i++) 
+    {
+        for(j=0;j<MAX_PWM_CTRL_PIN;j++)
+        {
+            if( (1<<pwm_id) & PWMTimer[i].reference) // Include PWM_ID
+            {
+                if((PWMTimer[i].reference & (1<<j)) != 0) // Detect How many PWM Use same TimerID
+                {   
+                    count++;
+                }
+            }
+
+        }
+        if(count > 1) // When Over 1 PWM Module use same Timer, then can't disable timer
+        {
+            PWMTimer[i].reference &= ~(1<<pwm_id); // Free reference
+            //DBG_PWM_ERR(" 4.PWM_ID=%d, PWMTimer[%d].ref %d, count=%d\n",pPwmAdapt->pwm_id, i,PWMTimer[i].reference,count);
+
+            DBG_PWM_ERR(" Over 1 PWM Module use same Timer %d, then can't disable timer\n", pPwmAdapt->gtimer_id); 
+            if (pPwmAdapt->enable) { // Disable PWM PIN
+                PinCtrl((PWM0+pwm_id), pPwmAdapt->sel, 0);       
+                pPwmAdapt->enable = 0;
+            }
+            pPwmAdapt->gtimer_id = 0xFF; // Initial Gtmier ID
+            //DBG_PWM_ERR(" 4.PWM_ID=%d, PWMTimer[%d].ref %d\n",pPwmAdapt->pwm_id, i,PWMTimer[i].reference);
+            count=0;
+            return;
+        }
+        else if (count == 1)
+        {
+            PWMTimer[i].reference &= ~(1<<pwm_id); // Free reference
+            pPwmAdapt->gtimer_id = 0xFF; // Initial Gtmier ID
+            //DBG_PWM_ERR(" 4.PWM_ID=%d, PWMTimer[%d].ref %d, count=%d\n",pPwmAdapt->pwm_id, i,PWMTimer[i].reference,count);
+        }
+        count=0;
+    } 
+    if (NULL == pPwmAdapt) {
+        DBG_PWM_ERR ("HAL_Pwm_Disable: NULL adapter\n");
+        return;
+    }
+        
+    #ifndef CONFIG_CHIP_E_CUT
+        HAL_Pwm_Disable_8195a(pPwmAdapt);
+    #else
+        HAL_Pwm_Disable_8195a_V04(pPwmAdapt);
+    #endif
+
 }
 
 #endif  //CONFIG_PWM_EN

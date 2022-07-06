@@ -12,7 +12,7 @@ extern u8 __image1_bss_start__[];
 extern u8 __image1_bss_end__[];
 
 extern u8 __image2_entry_func__[];
-extern u8 __image2_validate_code__[];
+extern u8* __image2_validate_code__;
 extern u8 __bss_start__[];
 extern u8 __bss_end__[];
 #endif

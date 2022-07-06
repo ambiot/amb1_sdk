@@ -305,6 +305,8 @@ static u32 ssi_dma_send(void *Adapter, u8 *pTxData, u32 Length)
 	ret = SSI_TXGDMA_Init(ssi_adapter->Index, &ssi_adapter->SSITxGdmaInitStruct,
 		ssi_adapter, (IRQ_FUN) ssi_dma_tx_irq,
 		pTxData, Length);
+
+	NVIC_SetPriority(GDMA_IrqNum[0][ssi_adapter->SSITxGdmaInitStruct.GDMA_ChNum], 10);			
 	
 	return ret;
 }
@@ -328,6 +330,8 @@ static u32 ssi_dma_recv(void *Adapter, u8  *pRxData, u32 Length)
 	ret = SSI_RXGDMA_Init(ssi_adapter->Index, &ssi_adapter->SSIRxGdmaInitStruct,
 		ssi_adapter, (IRQ_FUN) ssi_dma_rx_irq,
 		pRxData, Length);
+
+	NVIC_SetPriority(GDMA_IrqNum[0][ssi_adapter->SSIRxGdmaInitStruct.GDMA_ChNum], 11);	
 	
 	/* Set SSI DMA Enable */
 	SSI_SetDmaEnable(ssi_adapter->spi_dev, ENABLE, BIT_SHIFT_DMACR_RDMAE);

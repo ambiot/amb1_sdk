@@ -1527,7 +1527,7 @@
  *          library/x509write_crt.c
  *          library/mbedtls_x509write_csr.c
  */
-//#define MBEDTLS_ASN1_WRITE_C
+#define MBEDTLS_ASN1_WRITE_C
 
 /**
  * \def MBEDTLS_BASE64_C
@@ -1802,7 +1802,7 @@
  *
  * Requires: MBEDTLS_BIGNUM_C and at least one MBEDTLS_ECP_DP_XXX_ENABLED
  */
-//#define MBEDTLS_ECP_C
+#define MBEDTLS_ECP_C
 
 /**
  * \def MBEDTLS_ENTROPY_C

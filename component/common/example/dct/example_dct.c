@@ -7,15 +7,10 @@
 
 #if CONFIG_EXAMPLE_DCT
 
-#if defined(CONFIG_PLATFORM_8195A)
 #define DCT_BEGIN_ADDR			0x100000	/*!< DCT begin address of flash, ex: 0x100000 = 1M */
-#elif defined(CONFIG_PLATFORM_8711B)
-#define DCT_BEGIN_ADDR			0x0F5000
-#else
-#endif
 #define	MODULE_NUM				6			/*!< max number of module */
 #define VARIABLE_NAME_SIZE		32			/*!< max size of the variable name */
-#define VARIABLE_VALUE_SIZE		32			/*!< max size of the variable value */
+#define VARIABLE_VALUE_SIZE		64			/*!< max size of the variable value */
 
 static char example_dct_module[] = "dct_test_module";
 static char example_dct_variable0[] = "variable0";
@@ -27,12 +22,9 @@ void example_dct_thread(void* param){
 	int32_t			ret = -1;
 	dct_handle_t	dct_handle;
 	char			value[16];
-	
-	// format DCT, use for the first time
-	ret = dct_format(DCT_BEGIN_ADDR, MODULE_NUM, VARIABLE_NAME_SIZE, VARIABLE_VALUE_SIZE, 1);
-		
+
 	// initial DCT
-	ret = dct_init(DCT_BEGIN_ADDR);
+	ret = dct_init(DCT_BEGIN_ADDR, MODULE_NUM, VARIABLE_NAME_SIZE, VARIABLE_VALUE_SIZE, 1);
 	
 	// register module
 	ret = dct_register_module(example_dct_module);

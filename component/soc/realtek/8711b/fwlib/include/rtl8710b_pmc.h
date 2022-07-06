@@ -4,7 +4,7 @@
   * @author
   * @version V1.0.0
   * @date    2016-05-17
-  * @brief   This file provides firmware functions to manage the following 
+  * @brief   This file provides firmware functions to manage the following
   *          functionalities of the soc power management circut:
   *           - wakeup timer
   *           - wakeup pin
@@ -17,7 +17,7 @@
   * possession or use of this module requires written permission of RealTek.
   *
   * Copyright(c) 2015, Realtek Semiconductor Corporation. All rights reserved.
-  ****************************************************************************** 
+  ******************************************************************************
   */
 
 #ifndef _RTL8710B_PMC_H_
@@ -52,9 +52,9 @@
   *		-RTC
   *		-WIFI
   *		-SDIO
-  *		-USB   
-  *		-I2C0/I2C1    
-  *		-ADC  
+  *		-USB
+  *		-I2C0/I2C1
+  *		-ADC
   *		-GPIO
   *		-REGU timer
   *		-normal wakepin
@@ -70,7 +70,7 @@
   * following functions can be used when deep standby:
   *		-RTC
   *		-REGU timer
-  *		-normal wakepin 
+  *		-normal wakepin
   *		-ANA timer
   *
   *****************************************************************************************
@@ -78,7 +78,7 @@
   *****************************************************************************************
   * following functions can be used when deep standby:
   *		-REGU timer
-  *		-REGU wakepin 
+  *		-REGU wakepin
   *
   *****************************************************************************************
   * wakepin (A18/A5/A22/A23: mux normal wakepin and REGU wakepin)
@@ -89,7 +89,7 @@
   *		-STDBY
   * REGU wakepin:
   *		-just used in DSLP (1.2V closed)
-  *		-just support high acive, so this pin should pull low on your board 
+  *		-just support high acive, so this pin should pull low on your board
   *
   *****************************************************************************************
   *****************************************************************************************
@@ -111,7 +111,7 @@
   *			-ENABLE/DISABLE heavy loading current mode when SNZ, WIFI & ADC need heavy loading when SNZ
   *
   * BIT_SYSON_PMOPT_SLP_XTAL_EN & BIT_SYSON_PMOPT_SNZ_XTAL_EN
-  *		-WIFI and SOC both need XTAL when work, 
+  *		-WIFI and SOC both need XTAL when work,
   *		-but WIFI have individual option to control XTAL, so BIT_SYSON_PMOPT_SNZ_XTAL_EN not needed
   *
   * BIT_SYSON_PMOPT_SLP_SYSPLL_EN & BIT_SYSON_PMOPT_SNZ_SYSPLL_EN
@@ -133,11 +133,11 @@
 
 /** @defgroup PMC_Exported_Constants PMC Exported Constants
   * @{
-  */ 
+  */
 
-/** @defgroup PMC_WakePin_definitions 
+/** @defgroup PMC_WakePin_definitions
   * @{
-  */ 
+  */
 #define	WAKEUP_BY_GPIO_NONE				((u32)(0x00000000))
 #define	WAKEUP_BY_GPIO_WAKEUP0_LOW	((u32)(0x00000001))		//PA18
 #define	WAKEUP_BY_GPIO_WAKEUP0_HIG		((u32)(0x00000101))
@@ -152,9 +152,9 @@
   */
 
 
-/** @defgroup SOCPS_PS_Mode_definitions 
+/** @defgroup SOCPS_PS_Mode_definitions
   * @{
-  */ 
+  */
 #define	SOCPS_MODE_DSLP					((u32)(0x00000001 << 0))
 #define	SOCPS_MODE_DSTBY					((u32)(0x00000001 << 1))
 #define	SOCPS_MODE_SLP					((u32)(0x00000001 << 2))
@@ -162,7 +162,7 @@
   * @}
   */
 
-/** @defgroup SOCPS_PS_ANA_Clk_definitions 
+/** @defgroup SOCPS_PS_ANA_Clk_definitions
   * @{
   */
 #define	ANACK_250K							((u32)0x00000000)
@@ -171,7 +171,7 @@
   * @}
   */
 
-/** @defgroup SOCPS_PS_Calibration_Clk_definitions 
+/** @defgroup SOCPS_PS_Calibration_Clk_definitions
   * @{
   */
 #define	ANACK								((u32)0x00000000)
@@ -180,7 +180,7 @@
   * @}
   */
 
-/** @defgroup SOCPS_PS_Wakeup_Pin_definitions 
+/** @defgroup SOCPS_PS_Wakeup_Pin_definitions
   * @{
   */
 #define	WAKUP_0							((u32)0x00000000)/*!< _PA_18 */
@@ -191,7 +191,7 @@
   * @}
   */
 
-/** @defgroup SOCPS_PS_Wakeup_Pin_Mask_definitions 
+/** @defgroup SOCPS_PS_Wakeup_Pin_Mask_definitions
   * @{
   */
 #define	WAKUP_0_MASK						((u32)(0x00000001 << 0))/*!< _PA_18 */
@@ -241,13 +241,17 @@ _LONG_CALL_ void SOCPS_WakePinDebounce(u32 Index, u32 Status);
 _LONG_CALL_ void SOCPS_DeepStandby_RAM(void);
 _LONG_CALL_ void SOCPS_SleepPG_RAM(void);
 _LONG_CALL_ void SOCPS_DeepSleep_RAM(void);
-_LONG_CALL_ void SOCPS_FlashPin_PullUp_RAM(u32 NewStatus);
+_LONG_CALL_ void SOCPS_FlashPin_PullUp_RAM(u32 NewStatus, u32 ChipIndex);
 void SOCPS_SetReguWakepins_RAM(u32 PinMask);
 void SOCPS_ReguTimerCmd_RAM(u32 NewStatus);
 void SOCPS_WakePinDebounce_RAM(u32 Index, u32 Status);
 void SOCPS_SetReguTimer_RAM(u32 SDuration, u32 CalibData);
+void SOCPS_WakePinClear_RAM(void);
 void SOCPS_SleepCG(void);
 int SOCPS_DsleepWakeReason(void);
+int SOCPS_DstandbyWakeReason(void);
+int SOCPS_DstandbyWakeReason_gpio(void);
+VOID SOCPS_SetLogUartFlag(u32 flag);
 /**
   * @}
   */
@@ -258,7 +262,7 @@ int SOCPS_DsleepWakeReason(void);
  * @defgroup PMC_Register_Definitions PMC Register Definitions
  * @{
  *****************************************************************************/
- 
+
 /**************************************************************************//**
  * @defgroup REG_SYS_ANA_TIM_CTRL
  * @{
@@ -326,7 +330,7 @@ int SOCPS_DsleepWakeReason(void);
 /**************************************************************************//**
  * @defgroup REG_SYS_GPIO_DSTBY_WAKE_CTRL1
  * @{
- *****************************************************************************/										
+ *****************************************************************************/
 #define BIT_SYS_BTCLKDET_MODE					(0x00000001 << 27)
 #define BIT_SYS_BTCLKDET_DEBOUNCE_EN			(0x00000001 << 26)
 #define BIT_SYS_BTCLKDET_TIM_SCAL				(0x00000003 << 24)
@@ -346,7 +350,7 @@ int SOCPS_DsleepWakeReason(void);
 /**************************************************************************//**
  * @defgroup REG_SYS_SLP_WAKE_EVENT_MSK0
  * @{
- *****************************************************************************/	
+ *****************************************************************************/
 #define BIT_SYSON_WEVT_BOR2_MSK				(0x00000001 << 30)	/*!< BOR2 wakeup */
 
 #define BIT_SYSON_WEVT_GPIO_DSTBY_MSK		(0x00000001 << 29)	/*!< 1: enable Wakepin Wakeup DSTBY event */
@@ -479,7 +483,7 @@ int SOCPS_DsleepWakeReason(void);
 /**************************************************************************//**
  * @defgroup REG_SYS_PWRMGT_OPTION_EXT
  * @{
- *****************************************************************************/									
+ *****************************************************************************/
 #define BIT_SYSON_PMOPT_SLP_BYPS_WL			(0x00000001 << 4) /*!< 1: CM4 can enter sleep mode with no  regard of wlan's power state */
 #define BIT_SYSON_PMOPT_SLP_REDUCE_VOL		(0x00000001 << 3) /*!< 1: decrease SWR/LDO 1.2V voltage level when enter into sleep mode(decrease digital power); */
 #define BIT_SYSON_PMOPT_SLP_ANACK_SEL		(0x00000001 << 2) /*!< 1: set ANA clock to 4MHz when enter into power mode; */
@@ -490,7 +494,7 @@ int SOCPS_DsleepWakeReason(void);
 /**************************************************************************//**
  * @defgroup REG_SYS_DSLP_WEVENT
  * @{
- *****************************************************************************/	
+ *****************************************************************************/
 #define BIT_SYSON_DSLP_GPIO					(0x00000001 << 2) /*!< REGU GPIO wake33 event */
 #define BIT_SYSON_DSLP_WTIMER33				(0x00000001 << 0) /*!< REGU Timer33 wake event */
 /** @} */

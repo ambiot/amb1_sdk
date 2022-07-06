@@ -64,6 +64,8 @@
 
 static void icmp_send_response(struct pbuf *p, u8_t type, u8_t code);
 
+extern void lwip_frag_needed(struct pbuf *p, int new_mtu);
+
 /**
  * Processes ICMP input packets, called from ip_input().
  *
@@ -77,9 +79,9 @@ void
 icmp_input(struct pbuf *p, struct netif *inp)
 {
   u8_t type;
-#ifdef LWIP_DEBUG
+//#ifdef LWIP_DEBUG
   u8_t code;
-#endif /* LWIP_DEBUG */
+//#endif /* LWIP_DEBUG */
   struct icmp_echo_hdr *iecho;
   struct ip_hdr *iphdr;
   s16_t hlen;
@@ -226,7 +228,26 @@ icmp_input(struct pbuf *p, struct netif *inp)
       }
     }
     break;
+#if LWIP_MTU_ADJUST
+  case ICMP_DUR:
+    if(ICMP_DUR_FRAG == code){
+		
+	  u16_t mtu = (*(((u8_t *)p->payload) + 6) << 8) +*(((u8_t *)p->payload) + 7);
+
+          LWIP_DEBUGF(ICMP_DEBUG, ("rx icmp destination unreach, mtu %d\n", mtu));
+	  
+	   /*remove icmp header */
+	  if (pbuf_header(p, -8)) {
+                goto lenerr;
+         }
+	 lwip_frag_needed(p, mtu);
+    }else{
+	goto NotSupport;
+    }
+    break;
+#endif	
   default:
+NotSupport:  
     LWIP_DEBUGF(ICMP_DEBUG, ("icmp_input: ICMP type %"S16_F" code %"S16_F" not supported.\n", 
                 (s16_t)type, (s16_t)code));
     ICMP_STATS_INC(icmp.proterr);

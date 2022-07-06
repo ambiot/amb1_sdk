@@ -151,6 +151,7 @@ struct linger {
 #define TCP_KEEPIDLE   0x03    /* set pcb->keep_idle  - Same as TCP_KEEPALIVE, but use seconds for get/setsockopt */
 #define TCP_KEEPINTVL  0x04    /* set pcb->keep_intvl - Use seconds for get/setsockopt */
 #define TCP_KEEPCNT    0x05    /* set pcb->keep_cnt   - Use number of probes sent for get/setsockopt */
+#define TCP_MAXSEG 	0x06 /*set pcb->mss - Limit MSS */
 #endif /* LWIP_TCP */
 
 #if LWIP_UDP && LWIP_UDPLITE
@@ -318,6 +319,7 @@ struct timeval {
 
 void lwip_socket_init(void);
 
+int lwip_getsocklasterr(int s);
 int lwip_accept(int s, struct sockaddr *addr, socklen_t *addrlen);
 int lwip_bind(int s, const struct sockaddr *name, socklen_t namelen);
 int lwip_shutdown(int s, int how);

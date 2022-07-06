@@ -711,12 +711,15 @@ igmp_timeout(struct igmp_group *group)
 static void
 igmp_start_timer(struct igmp_group *group, u8_t max_time)
 {
-  /* ensure the input value is > 0 */
-  if (max_time == 0) {
-    max_time = 1;
-  }
-  /* ensure the random value is > 0 */
-  group->timer = (LWIP_RAND() % (max_time - 1)) + 1;
+	/* ensure the input value is > 0 */
+	if (max_time <= 1) { 
+		 group->timer = 1; 
+		 return; 
+	}
+	else{
+/* ensure the random value is > 0 & avoid doing a divide by zero and get an exception */
+		 group->timer = (LWIP_RAND() % (max_time - 1)) + 1;
+	}
 }
 
 /**

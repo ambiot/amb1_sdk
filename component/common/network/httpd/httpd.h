@@ -28,8 +28,8 @@
 #define HTTPD_SECURE_TLS         1   /*!< Running with HTTPS server */
 #define HTTPD_SECURE_TLS_VERIFY  2   /*!< Running with HTTPS server and verify client */
 
-#define HTTPD_THREAD_SINGLE      0   /*!< Multi-thread mode for request handling */
-#define HTTPD_THREAD_MULTIPLE    1   /*!< Single-thread mode for request handling */
+#define HTTPD_THREAD_SINGLE      0   /*!< Single-thread mode for request handling */
+#define HTTPD_THREAD_MULTIPLE    1   /*!< Multi-thread mode for request handling */
 
 #define HTTPD_DEBUG_OFF          0   /*!< Disable httpd debug log */
 #define HTTPD_DEBUG_ON           1   /*!< Enable httpd debug log */
@@ -74,6 +74,7 @@ struct httpd_conn {
 	struct http_request request;     /*!< Context for HTTP request */
 	void *tls;                       /*!< Context for TLS connection */
 	uint8_t *response_header;        /*!< Pointer to transmission buffer of HTTP response header */
+	uint32_t last_req_time;          /*!< Last request time in system ticks */
 };
 
 /**
@@ -93,6 +94,13 @@ int httpd_start(uint16_t port, uint8_t max_conn, uint32_t stack_bytes, uint8_t t
  * @return    None
  */
 void httpd_stop(void);
+
+/**
+ * @brief     This function is used to check whether httpd server is running
+ * @return    1 : if is running
+ * @return    0 : if is not running
+ */
+int httpd_is_running(void);
 
 /**
  * @brief     This function is used to register a callback function for a Web page request handling.
@@ -116,6 +124,20 @@ void httpd_clear_page_callbacks(void);
  * @return    None
  */
 void httpd_setup_debug(uint8_t debug);
+
+/**
+ * @brief     This function is used to setup httpd server priority.
+ * @param[in] priority: the default priority is defined to 1
+ * @return    None
+ */
+void httpd_setup_priority(uint8_t priority);
+
+/**
+ * @brief     This function is used to setup connection idle timeout for server.
+ * @param[in] idle_timeout: timeout in seconds
+ * @return    None
+ */
+void httpd_setup_idle_timeout(int idle_timeout);
 
 /**
  * @brief     This function is used to setup certificate and key for server before starting with HTTPS.
@@ -155,7 +177,11 @@ void httpd_conn_close(struct httpd_conn *conn);
 
 /**
  * @brief     This function is used to dump the parsed HTTP header of request in connection context.
- * @param[in] conn: pointer to connection context
+ * @param[in] conn: pointer to connection context. The data that can be stored in the following each arguments is 99 bytes or less.
+ *                  conn->request.method
+ *                  conn->request.path
+ *                  conn->request.host
+ *                  conn->request.content_type
  * @return    None
  */
 void httpd_conn_dump_header(struct httpd_conn *conn);
@@ -175,6 +201,7 @@ int httpd_request_is_method(struct httpd_conn *conn, char *method);
  * @return    0 : if successful
  * @return    -1 : if error occurred
  * @note      httpd_request_read_header() is automatically invoked by httpd server to parse request before executing page callback
+ * @note      Set only decimal numbers (0 to 9) in the Content-Length information.
  */
 int httpd_request_read_header(struct httpd_conn *conn);
 
@@ -190,7 +217,7 @@ int httpd_request_read_data(struct httpd_conn *conn, uint8_t *data, size_t data_
 /**
  * @brief      This function is used to get a header field from HTTP header of connection context.
  * @param[in]  conn: pointer to connection context
- * @param[in]  field: header field string to search
+ * @param[in]  field: header field string to search is 48 bytes or less.
  * @param[out] value: search result stored in memory allocated
  * @return    0 : if found
  * @return    -1 : if not found
@@ -212,8 +239,8 @@ int httpd_request_get_query_key(struct httpd_conn *conn, char *key, char **value
 /**
  * @brief      This function is used to start a HTTP response in connection.
  * @param[in]  conn: pointer to connection context
- * @param[in]  status: string of status code in HTTP response
- * @param[in]  content_type: string of Content-Type header field written to HTTP response. No Content-Type in HTTP response if NULL.
+ * @param[in]  status: string of status code in HTTP response is 188 bytes or less.
+ * @param[in]  content_type: string of Content-Type header field written to HTTP response is 183 bytes or less. No Content-Type in HTTP response if NULL.
  * @param[in]  content_len: value of Content-Length header field written to HTTP response. No Content-Length in HTTP response if NULL.
  * @return     0 : if successful
  * @return     -1 : if error occurred
@@ -223,8 +250,8 @@ int httpd_response_write_header_start(struct httpd_conn *conn, char *status, cha
 /**
  * @brief      This function is used to add an HTTP header field to HTTP response.
  * @param[in]  conn: pointer to connection context
- * @param[in]  name: HTTP header field name string
- * @param[in]  value: HTTP header field value
+ * @param[in]  name: HTTP header field name string. Data that can be stored is 195 bytes or less in total with param value.
+ * @param[in]  value: HTTP header field value. Data that can be stored is 195 bytes or less in total with param name.
  * @return     0 : if successful
  * @return     -1 : if error occurred
  */
@@ -264,7 +291,8 @@ void httpd_response_unauthorized(struct httpd_conn *conn, char *msg);
 
 /**
  * @brief      This function is used to write a default HTTP response for error of 404 Not Found.
- * @param[in]  conn: pointer to connection context
+ * @param[in]  conn: pointer to connection context. The data that can be stored in the following arguments is 183 bytes or less.
+ *                   conn->request.path
  * @param[in]  msg: message write to HTTP response body. A default message will be used if NULL.
  * @return     None
  */
@@ -272,7 +300,8 @@ void httpd_response_not_found(struct httpd_conn *conn, char *msg);
 
 /**
  * @brief      This function is used to write a default HTTP response for error of 405 Method Not Allowed.
- * @param[in]  conn: pointer to connection context
+ * @param[in]  conn: pointer to connection context. The data that can be stored in the following arguments is 30 bytes or less.
+ *                   conn->request.method
  * @param[in]  msg: message write to HTTP response body. A default message will be used if NULL.
  * @return     None
  */

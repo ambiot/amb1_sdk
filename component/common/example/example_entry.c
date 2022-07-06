@@ -52,6 +52,10 @@
 #include <httpd/example_httpd.h>
 #endif
 
+#if defined(CONFIG_EXAMPLE_HTTP2_CLIENT) && CONFIG_EXAMPLE_HTTP2_CLIENT
+#include <http2_client/example_http2_client.h>
+#endif
+
 #if CONFIG_EXAMPLE_TCP_KEEPALIVE
 #include <tcp_keepalive/example_tcp_keepalive.h>
 #endif
@@ -144,8 +148,12 @@
 #include <coap/example_coap.h>
 #endif
 
-#if CONFIG_EXAMPLE_WEBSOCKET
-#include <websocket/example_wsclient.h>
+#if CONFIG_EXAMPLE_WEBSOCKET_CLIENT
+#include <websocket_client/example_wsclient.h>
+#endif
+
+#if CONFIG_EXAMPLE_WEBSOCKET_SERVER
+#include <websocket_server/example_ws_server.h>
 #endif
 
 #if CONFIG_EXAMPLE_WLAN_SCENARIO
@@ -184,11 +192,63 @@
 #include <amazon_awsiot/example_amazon_awsiot.h>
 #endif
 
+#if CONFIG_EXAMPLE_BT_BEACON
+#include <bt_beacon/example_bt_beacon.h>
+#endif
+
+#if CONFIG_EXAMPLE_BT_CONFIG
+#include <bt_config/example_bt_config.h>
+#endif
+
+#if CONFIG_EXAMPLE_BT_GATT_CLIENT
+#include <bt_gatt_client/example_bt_gatt_client.h>
+#endif
+
+#if CONFIG_EXAMPLE_BT_GATT_SERVER
+#include <bt_gatt_server/example_bt_gatt_server.h>
+#endif
+
+#if CONFIG_EXAMPLE_BT_SPP
+#include <bt_spp/example_bt_spp.h>
+#endif
+
+#if CONFIG_EXAMPLE_WIFI_ROAMING
+#include <wifi_roaming/example_wifi_roaming.h>
+#endif
+
+#if CONFIG_EXAMPLE_ALC_DSP_FW_UPGRADE
+#include <alc_dsp_fw_upgrade/example_alc_dsp_fw_upgrade.h>
+#endif
+   
+#if CONFIG_EXAMPLE_AUDIO_PCM_UPLOAD
+#include <audio_pcm_upload/example_audio_pcm_upload.h>
+#endif
+
+#if CONFIG_EXAMPLE_HTTP_MP3
+#include <http_mp3/example_http_mp3.h>
+#endif
+
+#if (CONFIG_EXAMPLE_AMAZON_FREERTOS)
+#include <amazon_freertos/example_amazon_freertos.h>
+#endif
+
+#if (CONFIG_EXAMPLE_AMAZON_AFQP_TESTS)
+#include <amazon_afqp_tests/example_amazon_afqp_tests.h>
+#endif
+
+#if defined(CONFIG_WIFI_MESH) && CONFIG_WIFI_MESH
+#include <rmesh_test.h>
+#endif
 /*
 	Preprocessor of example
 */
 void pre_example_entry(void)
 {
+
+#if CONFIG_EXAMPLE_CM_BACKTRACE
+	cm_backtrace_init("application", "HW v1.0", "SW v1.0");
+#endif
+
 #if ATCMD_VER == ATVER_2
 	flash_t flash;
 	struct wlan_fast_reconnect read_data = {0};
@@ -271,6 +331,10 @@ void example_entry(void)
 
 #if CONFIG_EXAMPLE_HTTPD
 	example_httpd();
+#endif
+
+#if defined(CONFIG_EXAMPLE_HTTP2_CLIENT) && CONFIG_EXAMPLE_HTTP2_CLIENT
+    example_http2_client();
 #endif
 
 #if CONFIG_EXAMPLE_TCP_KEEPALIVE
@@ -365,6 +429,10 @@ void example_entry(void)
 	example_mass_storage();
 #endif
 
+#if CONFIG_EXAMPLE_USB_VENDOR_SPECIFIC 
+	example_vendor_specific();
+#endif        
+        
 #if CONFIG_EXAMPLE_UART_ATCMD
 	example_uart_atcmd();
 #endif
@@ -398,8 +466,12 @@ void example_entry(void)
     example_coap();
 #endif
 
-#if CONFIG_EXAMPLE_WEBSOCKET
+#if CONFIG_EXAMPLE_WEBSOCKET_CLIENT
     example_wsclient();
+#endif
+    
+#if CONFIG_EXAMPLE_WEBSOCKET_SERVER
+    example_wsserver();
 #endif
 
 #if CONFIG_EXAMPLE_WLAN_SCENARIO
@@ -444,6 +516,80 @@ void example_entry(void)
 
 #if CONFIG_HILINK
 example_hilink();
+#endif
+
+#if CONFIG_EXAMPLE_BT_BEACON
+	example_bt_beacon();
+#endif
+
+#if CONFIG_EXAMPLE_BT_CONFIG
+	example_bt_config();
+#endif
+
+#if CONFIG_EXAMPLE_BT_GATT_CLIENT
+	example_bt_gatt_client();
+#endif
+
+#if CONFIG_EXAMPLE_BT_GATT_SERVER
+	example_bt_gatt_server();
+#endif
+
+#if CONFIG_EXAMPLE_BT_SPP
+	example_bt_spp();
+#endif
+
+#if CONFIG_EXAMPLE_WIFI_ROAMING
+	example_wifi_roaming();
+#endif
+
+#if CONFIG_EXAMPLE_TICKLESS_WIFI_ROAMING
+	example_tickless_wifi_roaming();
+#endif
+
+#if CONFIG_EXAMPLE_ALC_DSP_FW_UPGRADE
+	example_alc_dsp_fw_upgrade();
+#endif
+        
+#if CONFIG_EXAMPLE_AUDIO_PCM_UPLOAD
+	example_audio_pcm_upload();
+#endif 
+
+#if CONFIG_EXAMPLE_HTTP_MP3
+	example_http_mp3();
+#endif 
+
+#if CONFIG_GREE
+	example_gree();
+#endif
+
+#if (CONFIG_EXAMPLE_AMAZON_FREERTOS)
+	example_amazon_freertos();
+#endif
+
+#if (CONFIG_EXAMPLE_AMAZON_AFQP_TESTS)
+	example_amazon_afqp_tests();
+#endif
+
+#if CONFIG_EXAMPLE_ANDLINK
+	example_andlink();
+#endif
+
+#if CONFIG_EXAMPLE_BT8752
+	example_wifi_over_8752();
+#endif
+
+#if CONFIG_EXAMPLE_S3_UPLOAD
+	example_s3_upload();
+#endif
+
+#if defined(CONFIG_RIC) && (CONFIG_RIC == 1)
+	extern void example_ric(void);
+	example_ric();
+#endif
+
+#if defined(CONFIG_WIFI_MESH) && CONFIG_WIFI_MESH
+//	example_rmesh();
+	rmesh_enter_net_config_test();
 #endif
 
 }

@@ -18,12 +18,20 @@
 #include <wifi/wifi_conf.h>
 #include "flash_api.h"
 #include "device_lock.h"
+#include "netif.h"
 #include <lwip_netconf.h>
 
 extern struct netif xnetif[NET_IF_NUM];
+extern u32 g_reconnect_delay;
 
 write_reconnect_ptr p_write_reconnect_ptr;
 
+#if CONFIG_FAST_DHCP
+uint32_t offer_ip = 0;
+uint32_t server_ip = 0;
+#endif
+
+#define WIFI_RETRYCOUNT 5
 /*
 * Usage:
 *       wifi connection indication trigger this function to save current
@@ -50,7 +58,11 @@ int wlan_wrtie_reconnect_data_to_flash(u8 *data, uint32_t len)
 
 	//wirte it to flash if different content: SSID, Passphrase, Channel, Security type
 	if(memcmp(data, (u8 *) &read_data, sizeof(struct wlan_fast_reconnect)) != 0) {
-	    printf("\r\n %s():not the same ssid/passphrase/channel, write new profile to flash", __func__);
+#if CONFIG_FAST_DHCP
+		printf("\r\n %s():not the same ssid/passphrase/channel/offer_ip, write new profile to flash", __func__);
+#else
+		printf("\r\n %s():not the same ssid/passphrase/channel, write new profile to flash", __func__);
+#endif
 	    flash_erase_sector(&flash, FAST_RECONNECT_DATA);
 	    flash_stream_write(&flash, FAST_RECONNECT_DATA, len, (uint8_t *) data);
 	}
@@ -77,7 +89,7 @@ int wlan_init_done_callback()
 	uint8_t     pscan_config;
 	char key_id[2] = {0};
 	int ret;
-	
+	uint32_t wifi_retry_connect = WIFI_RETRYCOUNT;//For fast wifi connect retry
 	rtw_network_info_t wifi = {
 		{0},    // ssid
 		{0},    // bssid
@@ -125,6 +137,8 @@ int wlan_init_done_callback()
 		channel &= 0xff;
 		security_type = data->security_type;
 		pscan_config = PSCAN_ENABLE | PSCAN_FAST_SURVEY;
+        
+WIFI_RETRY_LOOP:
 		//set partial scan for entering to listen beacon quickly
 		ret = wifi_set_pscan_chan((uint8_t *)&channel, &pscan_config, 1);
 		if(ret < 0){
@@ -145,6 +159,10 @@ int wlan_init_done_callback()
 				break;
 			case RTW_SECURITY_WPA_TKIP_PSK:
 			case RTW_SECURITY_WPA2_AES_PSK:
+#ifdef CONFIG_SAE_SUPPORT
+			case RTW_SECURITY_WPA3_AES_PSK:
+			case RTW_SECURITY_WPA2_WPA3_MIXED:
+#endif				
 				wifi.password = (unsigned char*) psk_passphrase;
 				wifi.password_len = strlen((char*)psk_passphrase);
 				break;
@@ -152,8 +170,31 @@ int wlan_init_done_callback()
 				break;
 		}
 
+#if CONFIG_FAST_DHCP
+		offer_ip = data->offer_ip;
+		server_ip = data->server_ip;
+#endif
 		ret = wifi_connect((char*)wifi.ssid.val, wifi.security_type, (char*)wifi.password, wifi.ssid.len,
 			wifi.password_len, wifi.key_id, NULL);
+		if (ret != RTW_SUCCESS) {
+			wifi_retry_connect--;
+			if (wifi_retry_connect > 0) {
+				/* Add the delay to wait for the _rtw_join_timeout_handler
+				 * If there is no this delay, there are some error when rhe AP
+				 * send the disassociation frame. It will cause the connection
+				 * to be failed at first time after resetting. So keep 300ms delay
+				 * here. For the detail about this error, please refer to
+				 * [RSWLANDIOT-1954].
+				 */
+				vTaskDelay(300);
+				if (g_reconnect_delay > 0) {
+					vTaskDelay(g_reconnect_delay);
+					g_reconnect_delay = 0;
+				}
+				printf("wifi retry\r\n");
+				goto WIFI_RETRY_LOOP;
+			}
+		}
 
 		if(ret == RTW_SUCCESS){
 			LwIP_DHCP(0, DHCP_START);

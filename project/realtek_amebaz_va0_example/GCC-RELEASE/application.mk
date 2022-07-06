@@ -62,11 +62,13 @@ INCLUDES += -I../../../component/common/api/at_cmd
 INCLUDES += -I../../../component/common/api/platform
 INCLUDES += -I../../../component/common/api/wifi
 INCLUDES += -I../../../component/common/api/wifi/rtw_wpa_supplicant/src
+INCLUDES += -I../../../component/common/api/wifi/rtw_wpa_supplicant/src/crypto
 INCLUDES += -I../../../component/common/api/wifi/rtw_wowlan
 INCLUDES += -I../../../component/common/api/wifi/rtw_wpa_supplicant/wpa_supplicant
 INCLUDES += -I../../../component/common/application
 INCLUDES += -I../../../component/common/application/mqtt/MQTTClient
 INCLUDES += -I../../../component/common/application/mqtt/MQTTPacket
+INCLUDES += -I../../../component/common/application/realmesh/include
 INCLUDES += -I../../../component/common/example
 INCLUDES += -I../../../component/common/example/wlan_fast_connect
 INCLUDES += -I../../../component/common/drivers/modules
@@ -80,8 +82,9 @@ INCLUDES += -I../../../component/common/drivers/wlan/realtek/src/hci
 INCLUDES += -I../../../component/common/drivers/wlan/realtek/src/hal
 INCLUDES += -I../../../component/common/drivers/wlan/realtek/src/hal/rtl8711b
 INCLUDES += -I../../../component/common/drivers/wlan/realtek/src/hal/OUTSRC
+INCLUDES += -I../../../component/common/drivers/wlan/realtek/src/core/option
+INCLUDES += -I../../../component/common/drivers/wlan/realtek/src/core/mesh
 INCLUDES += -I../../../component/common/drivers/wlan/realtek/wlan_ram_map/rom
-INCLUDES += -I../../../component/common/file_system
 INCLUDES += -I../../../component/common/network
 INCLUDES += -I../../../component/common/network/lwip/lwip_v1.4.1/port/realtek/freertos
 INCLUDES += -I../../../component/common/network/lwip/lwip_v1.4.1/src/include
@@ -89,6 +92,7 @@ INCLUDES += -I../../../component/common/network/lwip/lwip_v1.4.1/src/include/lwi
 INCLUDES += -I../../../component/common/network/lwip/lwip_v1.4.1/src/include/ipv4
 INCLUDES += -I../../../component/common/network/lwip/lwip_v1.4.1/port/realtek
 INCLUDES += -I../../../component/common/network/ssl/polarssl-1.3.8/include
+INCLUDES += -I../../../component/common/network/ssl/mbedtls-2.4.0/include
 INCLUDES += -I../../../component/common/network/ssl/ssl_ram_map/rom
 INCLUDES += -I../../../component/common/test
 INCLUDES += -I../../../component/common/utilities
@@ -113,8 +117,7 @@ INCLUDES += -I../../../component/common/mbed/hal_ext
 INCLUDES += -I../../../component/common/mbed/targets/cmsis/rtl8711b
 INCLUDES += -I../../../component/common/mbed/targets/hal/rtl8711b
 INCLUDES += -I../../../project/realtek_8195a_gen_project/rtl8195a/sw/lib/sw_lib/mbed/api
-INCLUDES += -I../../../component/common/application/mqtt/MQTTClient
-INCLUDES += -I../../../component/common/network/websocket
+
 
 # Source file list
 # -------------------------------------------------------------------
@@ -124,11 +127,12 @@ DRAM_C =
 
 #app uart_adapter
 SRC_C += ../../../component/common/application/uart_adapter/uart_adapter.c
+SRC_C += ../../../component/common/application/xmodem/uart_fw_update.c
       
 #cmsis
 SRC_C += ../../../component/soc/realtek/8711b/cmsis/device/app_start.c
 SRC_C += ../../../component/soc/realtek/8711b/fwlib/ram_lib/startup.c
-SRC_C += ../../../component/soc/realtek/8711b/cmsis/device/system_8195a.c
+#SRC_C += ../../../component/soc/realtek/8711b/cmsis/device/system_8195a.c
     
 
 #console
@@ -140,6 +144,7 @@ SRC_C += ../../../component/soc/realtek/8711b/app/monitor/ram/low_level_io.c
 SRC_C += ../../../component/soc/realtek/8711b/app/monitor/ram/monitor.c
 SRC_C += ../../../component/soc/realtek/8711b/app/monitor/ram/rtl_consol.c
 SRC_C += ../../../component/soc/realtek/8711b/app/monitor/ram/rtl_trace.c
+#SRC_C += ../../../component/common/api/wifi_interactive_mode.c
     
   
 #lib
@@ -148,12 +153,14 @@ SRC_C += ../../../component/soc/realtek/8711b/app/monitor/ram/rtl_trace.c
 #SRC_C += ../../../component/soc/realtek/8711b/misc/bsp/lib/common/IAR/lib_wlan.a
 #SRC_C += ../../../component/soc/realtek/8711b/misc/bsp/lib/common/IAR/lib_wlan_mp.a
 #SRC_C += ../../../component/soc/realtek/8711b/misc/bsp/lib/common/IAR/lib_wps.a
+#SRC_C += ../../../component/soc/realtek/8711b/misc/bsp/lib/common/IAR/lib_p2p.a
     
   
 #network api wifi rtw_wpa_supplicant
+SRC_C += ../../../component/common/api/wifi/rtw_wpa_supplicant/src/crypto/tls_polarssl.c
 SRC_C += ../../../component/common/api/wifi/rtw_wpa_supplicant/wpa_supplicant/wifi_eap_config.c
-SRC_C += ../../../component/common/api/wifi/rtw_wpa_supplicant/wpa_supplicant/wifi_p2p_config.c
 SRC_C += ../../../component/common/api/wifi/rtw_wpa_supplicant/wpa_supplicant/wifi_wps_config.c
+SRC_C += ../../../component/common/api/wifi/rtw_wpa_supplicant/wpa_supplicant/wifi_p2p_config.c
           
         
 #network api wifi        
@@ -169,18 +176,6 @@ SRC_C += ../../../component/common/api/lwip_netconf.c
       
     
 #network app
-SRC_C += ../../../component/common/application/mqtt/MQTTClient/MQTTClient.c
-SRC_C += ../../../component/common/application/mqtt/MQTTPacket/MQTTConnectClient.c
-SRC_C += ../../../component/common/application/mqtt/MQTTPacket/MQTTConnectServer.c
-SRC_C += ../../../component/common/application/mqtt/MQTTPacket/MQTTDeserializePublish.c
-SRC_C += ../../../component/common/application/mqtt/MQTTPacket/MQTTFormat.c
-SRC_C += ../../../component/common/application/mqtt/MQTTClient/MQTTFreertos.c
-SRC_C += ../../../component/common/application/mqtt/MQTTPacket/MQTTPacket.c
-SRC_C += ../../../component/common/application/mqtt/MQTTPacket/MQTTSerializePublish.c
-SRC_C += ../../../component/common/application/mqtt/MQTTPacket/MQTTSubscribeClient.c
-SRC_C += ../../../component/common/application/mqtt/MQTTPacket/MQTTSubscribeServer.c
-SRC_C += ../../../component/common/application/mqtt/MQTTPacket/MQTTUnsubscribeClient.c
-SRC_C += ../../../component/common/application/mqtt/MQTTPacket/MQTTUnsubscribeServer.c
 SRC_C += ../../../component/common/api/network/src/ping_test.c
 SRC_C += ../../../component/common/utilities/ssl_client.c
 SRC_C += ../../../component/common/utilities/tcptest.c
@@ -236,13 +231,10 @@ SRC_C += ../../../component/common/network/lwip/lwip_v1.4.1/src/netif/etharp.c
 SRC_C += ../../../component/common/network/lwip/lwip_v1.4.1/port/realtek/freertos/ethernetif.c
 SRC_C += ../../../component/common/drivers/wlan/realtek/src/osdep/lwip_intf.c
 SRC_C += ../../../component/common/network/lwip/lwip_v1.4.1/port/realtek/freertos/sys_arch.c
-      
-#network - wsclient
-SRC_C += ../../../component/common/network/websocket/wsclient_tls.c  
+        
 
 #network lwip     
 SRC_C += ../../../component/common/network/dhcp/dhcps.c
-SRC_C += ../../../component/common/network/sntp/sntp.c
       
     
 #network polarssl polarssl
@@ -290,7 +282,10 @@ SRC_C += ../../../component/common/network/ssl/polarssl-1.3.8/library/x509write_
 SRC_C += ../../../component/common/network/ssl/polarssl-1.3.8/library/x509write_csr.c
 SRC_C += ../../../component/common/network/ssl/polarssl-1.3.8/library/xtea.c
         
-      
+   
+#network polarssl WPA3 USE
+SRC_C += ../../../component/common/drivers/wlan/realtek/src/core/option/rtw_opt_crypto_ssl.c 
+
 #network polarssl ssl_ram_map
 SRC_C += ../../../component/common/network/ssl/ssl_ram_map/ssl_ram_map.c
         
@@ -354,28 +349,27 @@ SRC_C += ../../../component/soc/realtek/8711b/misc/rtl8710b_ota.c
 SRC_C += ../../../component/soc/realtek/8711b/fwlib/ram_lib/rtl8710b_pinmapcfg.c
 SRC_C += ../../../component/soc/realtek/8711b/fwlib/ram_lib/rtl8710b_sleepcfg.c
       
-
+#peripheral - wlan
+#SRC_C += ../../../component/common/drivers/wlan/realtek/src/core/option/rtw_opt_power_by_rate.c
+#SRC_C += ../../../component/common/drivers/wlan/realtek/src/core/option/rtw_opt_power_limit.c
+#SRC_C += ../../../component/common/drivers/wlan/realtek/src/core/option/rtw_opt_skbuf.c
+     
      
 #utilities example
 SRC_C += ../../../component/common/example/bcast/example_bcast.c
-SRC_C += ../../../component/common/example/dct/example_dct.c
 SRC_C += ../../../component/common/example/eap/example_eap.c
 SRC_C += ../../../component/common/example/example_entry.c
 SRC_C += ../../../component/common/example/get_beacon_frame/example_get_beacon_frame.c
 SRC_C += ../../../component/common/example/high_load_memory_use/example_high_load_memory_use.c
 SRC_C += ../../../component/common/example/http_client/example_http_client.c
-SRC_C += ../../../component/common/example/httpc/example_httpc.c
-SRC_C += ../../../component/common/example/httpd/example_httpd.c
 SRC_C += ../../../component/common/example/http_download/example_http_download.c
+SRC_C += ../../../component/common/example/inic_gspi/example_inic_gspi.c
 SRC_C += ../../../component/common/example/mcast/example_mcast.c
 SRC_C += ../../../component/common/example/mdns/example_mdns.c
-SRC_C += ../../../component/common/example/mqtt/example_mqtt.c
 SRC_C += ../../../component/common/example/nonblock_connect/example_nonblock_connect.c
 SRC_C += ../../../component/common/example/rarp/example_rarp.c
 SRC_C += ../../../component/common/example/sntp_showtime/example_sntp_showtime.c
 SRC_C += ../../../component/common/example/socket_select/example_socket_select.c
-SRC_C += ../../../component/common/example/socket_tcp_trx/example_socket_tcp_trx_1.c
-SRC_C += ../../../component/common/example/socket_tcp_trx/example_socket_tcp_trx_2.c
 SRC_C += ../../../component/common/example/ssl_download/example_ssl_download.c
 SRC_C += ../../../component/common/example/ssl_server/example_ssl_server.c
 SRC_C += ../../../component/common/example/tcp_keepalive/example_tcp_keepalive.c
@@ -383,24 +377,43 @@ SRC_C += ../../../component/common/example/uart_atcmd/example_uart_atcmd.c
 SRC_C += ../../../component/common/example/wifi_mac_monitor/example_wifi_mac_monitor.c
 SRC_C += ../../../component/common/example/wlan_fast_connect/example_wlan_fast_connect.c
 SRC_C += ../../../component/common/example/wlan_scenario/example_wlan_scenario.c
-SRC_C += ../../../component/common/example/websocket/example_wsclient.c
+SRC_C += ../../../component/common/example/websocket_server/example_ws_server.c
+SRC_C += ../../../component/common/example/websocket_client/example_wsclient.c
 SRC_C += ../../../component/common/example/xml/example_xml.c
 SRC_C += ../../../component/common/example/uart_firmware_update/example_uart_update.c
 
-
-#network - httpc
-SRC_C += ../../../component/common/network/httpc/httpc_tls.c
-
-#network - httpd
-SRC_C += ../../../component/common/network/httpd/httpd_tls.c   
     
 #utilities 
 SRC_C += ../../../component/common/utilities/cJSON.c
 SRC_C += ../../../component/common/utilities/http_client.c
 SRC_C += ../../../component/common/utilities/uart_socket.c
+SRC_C += ../../../component/common/utilities/webserver.c
 SRC_C += ../../../component/common/utilities/xml.c
-    
-  
+
+#wifi mesh application
+#SRC_C += ../../../component/common/application/realmesh/src/rmesh.c
+#SRC_C += ../../../component/common/application/realmesh/src/rmesh_broadcast.c
+#SRC_C += ../../../component/common/application/realmesh/src/rmesh_config.c
+#SRC_C += ../../../component/common/application/realmesh/src/rmesh_connect.c
+#SRC_C += ../../../component/common/application/realmesh/src/rmesh_data_forward.c
+#SRC_C += ../../../component/common/application/realmesh/src/rmesh_event_cb.c
+#SRC_C += ../../../component/common/application/realmesh/src/rmesh_frame.c
+#SRC_C += ../../../component/common/application/realmesh/src/rmesh_keep_alive.c
+#SRC_C += ../../../component/common/application/realmesh/src/rmesh_ota.c
+#SRC_C += ../../../component/common/application/realmesh/src/rmesh_ota_root_get_image.c
+#SRC_C += ../../../component/common/application/realmesh/src/rmesh_ota_root_to_cloud.c
+#SRC_C += ../../../component/common/application/realmesh/src/rmesh_ota_root_to_device.c
+#SRC_C += ../../../component/common/application/realmesh/src/rmesh_ota_device.c
+#SRC_C += ../../../component/common/application/realmesh/src/rmesh_route.c
+#SRC_C += ../../../component/common/application/realmesh/src/rmesh_scan.c
+#SRC_C += ../../../component/common/application/realmesh/src/rmesh_security.c
+#SRC_C += ../../../component/common/application/realmesh/src/rmesh_topology.c
+#SRC_C += ../../../component/common/application/realmesh/test/rmesh_light_application.c
+#SRC_C += ../../../component/common/application/realmesh/test/rmesh_ping_test.c
+#SRC_C += ../../../component/common/application/realmesh/test/rmesh_root_socket.c
+#SRC_C += ../../../component/common/application/realmesh/test/rmesh_test.c
+#SRC_C += ../../../component/common/application/realmesh/test/rmesh_tp_test.c
+
 #user
 SRC_C += ../src/main.c
 
@@ -435,8 +448,8 @@ LFLAGS += -Wl,-wrap,DecGTK
 
 
 LIBFLAGS =
-all: LIBFLAGS += -L../../../component/soc/realtek/8711b/misc/bsp/lib/common/GCC/ -l_platform -l_wlan -l_wps -l_p2p -l_dct -l_rtlstd -lm -lc -lnosys -lgcc -l_websocket -l_http -l_mdns
-mp: LIBFLAGS += -L../../../component/soc/realtek/8711b/misc/bsp/lib/common/GCC/ -l_platform -l_wlan_mp -l_wps -l_p2p -l_dct -l_rtlstd -lm -lc -lnosys -lgcc -l_websocket -l_http -l_mdns
+all: LIBFLAGS += -L../../../component/soc/realtek/8711b/misc/bsp/lib/common/GCC/ -l_platform -l_wlan -l_xmodem -l_eap -l_http -l_wps -l_p2p -l_rtlstd -l_websocket -lm -lc -lnosys -lgcc
+mp: LIBFLAGS += -L../../../component/soc/realtek/8711b/misc/bsp/lib/common/GCC/ -l_platform -l_wlan_mp -l_eap -l_wps -l_p2p -l_rtlstd -lm -lc -lnosys -lgcc
 
 RAMALL_BIN =
 OTA_BIN = 
@@ -486,7 +499,7 @@ manipulate_images:
 	@echo ===========================================================
 	$(NM) $(BIN_DIR)/$(TARGET).axf | sort > $(BIN_DIR)/$(TARGET).nmap
 
-	$(OBJCOPY) -j .ram_image2.entry -j .ram_image2.data -j .ram_image2.bss -j .ram_image2.skb.bss -j .ram_heap.data -Obinary $(BIN_DIR)/$(TARGET).axf $(BIN_DIR)/ram_2.r.bin
+	$(OBJCOPY) -j .ram_image2.entry -j .ram_image2.data -j .ram_image2.text -j .ram_image2.bss -j .ram_image2.skb.bss -j .ram_heap.data -Obinary $(BIN_DIR)/$(TARGET).axf $(BIN_DIR)/ram_2.r.bin
 	$(OBJCOPY) -j .xip_image2.text -Obinary $(BIN_DIR)/$(TARGET).axf $(BIN_DIR)/xip_image2.bin
 	$(OBJCOPY) -j .ram_rdp.text -Obinary $(BIN_DIR)/$(TARGET).axf $(BIN_DIR)/rdp.bin
 
@@ -534,7 +547,9 @@ endif
 
 .PHONY: build_info
 build_info:
-	@echo \#define UTS_VERSION \"`date +%Y/%m/%d-%T`\" > .ver
+	@echo \#define RTL_FW_COMPILE_TIME RTL8195AFW_COMPILE_TIME\ > .ver
+	@echo \#define RTL_FW_COMPILE_DATE RTL8195AFW_COMPILE_DATE\ >> .ver
+	@echo \#define UTS_VERSION \"`date +%Y/%m/%d-%T`\" >> .ver
 	@echo \#define RTL8195AFW_COMPILE_TIME \"`date +%Y/%m/%d-%T`\" >> .ver
 	@echo \#define RTL8195AFW_COMPILE_DATE \"`date +%Y%m%d`\" >> .ver
 	@echo \#define RTL8195AFW_COMPILE_BY \"`id -u -n`\" >> .ver

@@ -30,7 +30,7 @@
 
 #define CONFIG_LITTLE_ENDIAN
 #define CONFIG_80211N_HT 
-//#define CONFIG_RECV_REORDERING_CTRL
+#define CONFIG_RECV_REORDERING_CTRL
 #define RTW_NOTCH_FILTER 0
 #define CONFIG_EMBEDDED_FWIMG
 #define CONFIG_PHY_SETTING_WITH_ODM
@@ -72,18 +72,20 @@
 	#define CONFIG_LPS_32K
 	#define TDMA_POWER_SAVING
 	#define CONFIG_WAIT_PS_ACK
+	#if defined(CONFIG_PLATFORM_8711B)
+		#define CONFIG_WLAN_LOW_PW // only for AmebaZ
+	#endif
 #endif
 
 #define BAD_MIC_COUNTERMEASURE 1
 #define DEFRAGMENTATION 1
 
 #define WIFI_LOGO_CERTIFICATION 0
-#if WIFI_LOGO_CERTIFICATION
-    #define RX_AGGREGATION 1
-	#define RX_AMSDU 1
-#else
-    #define RX_AGGREGATION 0
-	#define RX_AMSDU 0
+#define RX_AGGREGATION 1
+#define RX_AMSDU 1
+
+#if defined(CONFIG_PLATFORM_8711B)
+	#define CONFIG_FW_C2H_PKT
 #endif
 
 #if defined(CONFIG_PLATFORM_AMEBA_X)
@@ -130,9 +132,6 @@
 #define NOT_SUPPORT_VHT
 #define NOT_SUPPORT_40M
 #define NOT_SUPPORT_80M
-#ifndef CONFIG_PLATFORM_8711B
-#define NOT_SUPPORT_BBSWING
-#endif
 #define NOT_SUPPORT_OLD_CHANNEL_PLAN
 #define NOT_SUPPORT_BT
 
@@ -149,6 +148,8 @@
 #define BE_I_CUT			1
 #endif
 
+#define CONFIG_WLAN_SWITCH_MODE 0
+
 /* For WPA2 */
 #define CONFIG_INCLUDE_WPA_PSK
 #ifdef CONFIG_INCLUDE_WPA_PSK
@@ -157,6 +158,16 @@
 #define PSK_SUPPORT_TKIP	1
 #endif
 //#define AP_PSK_SUPPORT_TKIP
+
+#define CONFIG_PMKSA_CACHING
+
+/* For WPA3 */
+#define CONFIG_IEEE80211W
+#define CONFIG_SAE_SUPPORT
+#ifdef CONFIG_SAE_SUPPORT
+#define CONFIG_SAE_DH_SUPPORT 1
+#define ALL_DH_GROUPS
+#endif
 
 /* For promiscuous mode */
 #define CONFIG_PROMISC
@@ -176,16 +187,35 @@
 #define CONFIG_MULTICAST
 #endif
 
+#define CONFIG_RX_PACKET_APPEND_FCS
+
 /* For STA+AP Concurrent MODE */
 #define CONFIG_CONCURRENT_MODE
 #ifdef CONFIG_CONCURRENT_MODE
+  //#define CONFIG_MCC_MODE
+  #ifdef CONFIG_MCC_MODE
+    //#define CONFIG_MCC_STA_AP_MODE
+    #ifdef CONFIG_MCC_STA_AP_MODE
+      #ifndef CONFIG_RX_PACKET_APPEND_FCS
+        #define CONFIG_RX_PACKET_APPEND_FCS
+      #endif
+      #define CONFIG_SOFTAP_KEEP_SILENT
+      #define CONFIG_SOFTAP_KEEP_SILENT_TABLE
+      #undef CONFIG_PROMISC
+    #endif
+    //#define CONFIG_STA_STA_MODE
+  #endif
   #if defined(CONFIG_PLATFORM_8195A)
     #define CONFIG_RUNTIME_PORT_SWITCH
   #endif
   #if defined(CONFIG_HARDWARE_8188F)
   #define NET_IF_NUM 2
   #else
-  #define NET_IF_NUM ((CONFIG_ETHERNET) + (CONFIG_WLAN) + 1)
+  #ifdef CONFIG_BRIDGE
+    #define NET_IF_NUM ((CONFIG_ETHERNET) + (CONFIG_BRIDGE) + (CONFIG_WLAN) + 1)
+  #else
+    #define NET_IF_NUM ((CONFIG_ETHERNET) + (CONFIG_WLAN) + 1)
+  #endif
   #endif
 #else
   #if defined(CONFIG_HARDWARE_8188F)
@@ -243,6 +273,9 @@
 #error "If CONFIG_P2P_NEW, need to SUPPORT_SCAN_BUF"
 #endif
 #endif
+
+/*For DPP */
+#define CONFIG_DPP
 
 #define CONFIG_NEW_SIGNAL_STAT_PROCESS
 #define CONFIG_SKIP_SIGNAL_SCALE_MAPPING
@@ -325,7 +358,8 @@ extern unsigned int g_ap_sta_num;
 		//Control wifi mcu function
 		#define CONFIG_LITTLE_WIFI_MCU_FUNCTION_THREAD
 		#define CONFIG_ODM_REFRESH_RAMASK
-		//#define CONFIG_ANTENNA_DIVERSITY
+		#define CONFIG_ANTENNA_DIVERSITY
+		//#define CONFIG_ANTENNA_DIVERSITY_FORCE_ON
 		//#define CONFIG_BT_COEXIST
 	#endif
 #endif // #ifdef CONFIG_MP_INCLUDED
@@ -354,9 +388,7 @@ extern unsigned int g_ap_sta_num;
 		#define CONFIG_MOVE_PSK_TO_ROM
 		#define CONFIG_WOWLAN
 		#define CONFIG_TRAFFIC_PROTECT
-		#ifdef CONFIG_LPS
-		#define REKEY_LEAVE_LPS
-		#endif
+		#define CONFIG_FABVERSION_UMC			0
 	#endif
 #elif defined(CONFIG_HARDWARE_8188F)
 #define CONFIG_RTL8188F
@@ -505,4 +537,7 @@ extern unsigned int g_ap_sta_num;
 #undef NOT_SUPPORT_40M
 #undef CONFIG_CONCURRENT_MODE
 #endif
+#define CONFIG_DFS
+//#define CONFIG_EMPTY_EFUSE_PG_ENABLE
+//#define CONFIG_WIFI_MESH	1
 #endif //WLANCONFIG_H

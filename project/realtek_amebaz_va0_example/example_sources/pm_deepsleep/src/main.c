@@ -19,6 +19,7 @@
 #define GPIO_PUSHBT_PIN		PA_22
 
 // deep sleep can only be waked up by A33 AND GPIO(PA_18, PA_5, PA_22, PA_23)
+// To change the wakepin, need to config the dsleep_wakepin_config[] in rtl8710b_dsleepcfg.c
 #define GPIO_WAKE_PIN		PA_5
 
 void gpio_pull_control()

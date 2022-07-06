@@ -3,6 +3,8 @@ set tooldir=%2\..\..\..\component\soc\realtek\8195a\misc\iar_utility\common\tool
 set libdir=%2\..\..\..\component\soc\realtek\8195a\misc\bsp
 set cfgdir=%3
 
+set /a secure_boot = 0
+
 echo config %3
 
 del %cfgdir%/Exe/target.map %cfgdir%/Exe/application.asm *.bin
@@ -60,10 +62,19 @@ if defined %flash_run_start (
 	set flash_run_end=0xFFFFFFFF
 )
 
+
+
+
+:: force update ram_2_for_hash.bin and ram_3_for_hash.bin
+if exist %cfgdir%\Exe\ram_2_for_hash.bin del %cfgdir%\Exe\ram_2_for_hash.bin
+if exist %cfgdir%\Exe\ram_3_for_hash.bin del %cfgdir%\Exe\ram_3_for_hash.bin
+
 %tooldir%\pick %ram2_start% %ram2_end% %cfgdir%\Exe\ram_2.bin %cfgdir%\Exe\ram_2.p.bin body+reset_offset+sig
 %tooldir%\pick %ram2_start% %ram2_end% %cfgdir%\Exe\ram_2.bin %cfgdir%\Exe\ram_2.ns.bin body+reset_offset
+if %secure_boot%==1 (%tooldir%\tail.exe -c +17 %cfgdir%/Exe/ram_2.p.bin > %cfgdir%/Exe/ram_2_for_hash.bin)
 if defined %ram3_start (
 %tooldir%\pick %ram3_start% %ram3_end% %cfgdir%\Exe\sdram.bin %cfgdir%\Exe\ram_3.p.bin body+reset_offset
+if %secure_boot%==1 (%tooldir%\tail.exe -c +17 %cfgdir%/Exe/ram_3.p.bin > %cfgdir%/Exe/ram_3_for_hash.bin)
 )
 
 :: force update ram_1.p.bin
@@ -80,6 +91,28 @@ if not exist %cfgdir%\Exe\ram_1.p.bin (
 
 ::padding ram_1.p.bin to 32K+4K+4K+4K, LOADER/RSVD/SYSTEM/CALIBRATION
 %tooldir%\padding 44k 0xFF %cfgdir%\Exe\ram_1.p.bin
+
+:: Signature ram_2.bin
+if exist %cfgdir%\Exe\ram_2_for_hash.bin (
+	python %tooldir%\hashing.py %cfgdir%\Exe\ram_2_for_hash.bin
+	copy %cfgdir%\..\output.bin %cfgdir%\..\hash_sum_2.bin
+	%tooldir%\ed25519.exe sign %cfgdir%/../hash_sum_2.bin %cfgdir%/../keypair.json
+	%tooldir%\tail.exe -c 64 %cfgdir%/../hash_sum_2.bin > %cfgdir%/../signature_ram_2
+	python %tooldir%\reheader.py %cfgdir%\Exe\ram_2.p.bin
+	python %tooldir%\reheader.py %cfgdir%\Exe\ram_2.ns.bin
+	copy /b %cfgdir%\Exe\ram_2.p.bin+%cfgdir%\..\signature_ram_2 %cfgdir%\Exe\ram_2.p.bin
+	copy /b %cfgdir%\Exe\ram_2.ns.bin+%cfgdir%\..\signature_ram_2 %cfgdir%\Exe\ram_2.ns.bin
+)
+
+:: Signature sdram.bin
+if exist %cfgdir%\Exe\ram_3_for_hash.bin (
+	python %tooldir%\hashing.py %cfgdir%\Exe\ram_3_for_hash.bin
+	copy %cfgdir%\..\output.bin %cfgdir%\..\hash_sum_3.bin
+	%tooldir%\ed25519.exe sign %cfgdir%/../hash_sum_3.bin %cfgdir%/../keypair.json
+	%tooldir%\tail.exe -c 64 %cfgdir%/../hash_sum_3.bin > %cfgdir%/../signature_ram_3
+	python %tooldir%\reheader.py %cfgdir%\Exe\ram_3.p.bin
+	copy /b %cfgdir%\Exe\ram_3.p.bin+%cfgdir%\..\signature_ram_3 %cfgdir%\Exe\ram_3.p.bin
+)
 
 :: SDRAM case
 if defined %ram3_start (

@@ -148,7 +148,9 @@ typedef struct tskTaskControlBlock
 
 	#if ( portSTACK_GROWTH > 0 )
 		StackType_t		*pxEndOfStack;		/*< Points to the end of the stack on architectures where the stack grows up from low memory. */
-	#endif
+	#else
+       	UBaseType_t     uxSizeOfStack;      /*< Support For CmBacktrace >*/
+	#endif /* ( portSTACK_GROWTH > 0 )*/
 
 	#if ( portCRITICAL_NESTING_IN_TCB == 1 )
 		UBaseType_t 	uxCriticalNesting; 	/*< Holds the critical section nesting depth for ports that do not maintain their own count in the port layer. */
@@ -571,6 +573,8 @@ TCB_t * pxNewTCB;
 
 			/* Check the alignment of the calculated top of stack is correct. */
 			configASSERT( ( ( ( portPOINTER_SIZE_TYPE ) pxTopOfStack & ( portPOINTER_SIZE_TYPE ) portBYTE_ALIGNMENT_MASK ) == 0UL ) );
+			pxNewTCB->uxSizeOfStack = usStackDepth;   /*< Support For CmBacktrace >*/
+
 		}
 		#else /* portSTACK_GROWTH */
 		{
@@ -3745,6 +3749,37 @@ TickType_t uxReturn;
 void * vTaskGetCurrentTCB( void )
 {
 	return (void*)pxCurrentTCB;
+}
+
+/*-----------------------------------------------------------*/
+/*< Support For CmBacktrace >*/
+uint32_t * vTaskStackAddr()
+{
+    return pxCurrentTCB->pxStack;
+}
+
+volatile uint32_t * vTaskStackTOPAddr()
+{
+    return pxCurrentTCB->pxTopOfStack;
+}
+
+
+uint32_t vTaskStackSize()
+{
+    #if ( portSTACK_GROWTH > 0 )
+    
+    return (pxNewTCB->pxEndOfStack - pxNewTCB->pxStack + 1);
+    
+    #else /* ( portSTACK_GROWTH > 0 )*/
+    
+    return pxCurrentTCB->uxSizeOfStack;
+    
+    #endif /* ( portSTACK_GROWTH > 0 )*/
+}
+
+char * vTaskName()
+{
+    return pxCurrentTCB->pcTaskName;
 }
 
 #ifdef FREERTOS_MODULE_TEST

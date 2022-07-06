@@ -323,7 +323,7 @@ void console_cmd_exec(PUART_LOG_CTL   pUartLogCtlExe)
               //RtlUpSema((_Sema *)&log_rx_interrupt_sema);
 		rtw_up_sema((_sema *)&log_rx_interrupt_sema);
 #endif
-              ArrayInitialize(argv[0], sizeof(argv[0]) ,0);
+              ArrayInitialize(argv[0], (argc * sizeof(u8)) ,0);
 	}else{
 #if defined(configUSE_WAKELOCK_PMU) && (configUSE_WAKELOCK_PMU == 1)
 		pmu_acquire_wakelock(BIT(PMU_LOGUART_DEVICE));
@@ -387,12 +387,15 @@ int buffered_printf(const char* fmt, ...)
     char tmp_buffer[UART_LOG_CMD_BUFLEN+1];
     static int print_idx = 0;
     int cnt;
+    va_list arglist;
 
     if(xEventGroupGetBits(print_event)!=1)
             xEventGroupSetBits(print_event, 1);
 
     memset(tmp_buffer,0,UART_LOG_CMD_BUFLEN+1);
-    VSprintf(tmp_buffer, fmt, ((const int *)&fmt)+1);
+    va_start(arglist, fmt);
+    rtl_vsnprintf(tmp_buffer, sizeof(tmp_buffer), fmt, arglist);
+    va_end(arglist);
     cnt = _strlen(tmp_buffer);
     if(cnt < available_space()){
         if(print_idx >= flush_idx){
@@ -427,7 +430,7 @@ void printing_task(void* arg)
         //wait event
         if(xEventGroupWaitBits(print_event, 1,  pdFALSE, pdFALSE, 100 ) == 1){
             while(used_length > 0){
-                putchar(print_buffer[flush_idx]);
+                DiagPutChar(print_buffer[flush_idx]);
                 flush_idx++;
                 if(flush_idx >= MAX_PRINTF_BUF_LEN)
                     flush_idx-=MAX_PRINTF_BUF_LEN;

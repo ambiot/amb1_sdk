@@ -7,19 +7,11 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2006-2013 ARM Limited
+  * Copyright (c) 2015, Realtek Semiconductor Corp.
+  * All rights reserved.
   *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  *     http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
+  * This module is a confidential and proprietary property of RealTek and
+  * possession or use of this module requires written permission of RealTek.
   ****************************************************************************** 
   */
 
@@ -190,10 +182,62 @@ int flash_read_id(flash_t *obj, uint8_t *buf, uint8_t len);
   */
 int flash_read_unique_id(flash_t *obj, uint8_t *buf, uint8_t len);
 
+/**
+  * @brief  This function is only for Winbond flash to set lock mode.
+  * @param  mode: This parameter can be 1 or 0.
+  *             @arg 1: Enable individual sector / block protect feature.
+  *             @arg 0: Set status register 1 to enble write protect feature.
+  * @retval none
+  * @note But not all Winbond flash supports the function, plase refer to data sheets of the target flashes.
+  */
+void flash_set_lock_mode(uint32_t mode);
+
+/**
+  * @brief  This function is only for Winbond flash to lock whole flash chip.
+  * @param  none
+  * @retval none
+  * @note But not all Winbond flash supports the function, plase refer to data sheets of the target flashes.
+  */
+void flash_global_lock(void);
+
+/**
+  * @brief  This function is only for Winbond flash to unlock whole flash chip.
+  * @param  none
+  * @retval none
+  * @note But not all Winbond flash supports the function, plase refer to data sheets of the target flashes.
+  */
+void flash_global_unlock(void);
+
+/**
+  * @brief  This function is only for Winbond flash to lock individual sector or block region, should refer to the datasheet for more details.
+  * @param  address
+  * @retval none
+  * @note But not all Winbond flash supports the function, plase refer to data sheets of the target flashes.
+  */
+void flash_individual_lock(uint32_t address);
+
+/**
+  * @brief  This function is only for Winbond flash to unlock individual sector or block region, should refer to the datasheet for more details.
+  * @param  address
+  * @retval none
+  * @note But not all Winbond flash supports the function, plase refer to data sheets of the target flashes.
+  */
+void flash_individual_unlock(uint32_t address);
+
+/**
+  * @brief  This function is only for Winbond flash to get the individual lock state on certain address.
+  * @param  address
+  * @retval 1: the target sector/block is locked. 
+  *			0: the target sector/block is not locked.
+  * @note But not all Winbond flash supports the function, plase refer to data sheets of the target flashes.
+  */
+int flash_read_individual_lock_state(uint32_t address);
+
 ///@}
 
-#if CONFIG_PLATFORM_8711B
-///@name AmebaZ Only 
+#if (defined(CONFIG_PLATFORM_8711B) && (CONFIG_PLATFORM_8711B)) \
+    || (defined(CONFIG_PLATFORM_8710C) && (CONFIG_PLATFORM_8710C))
+///@name AmebaZ/AmebaZ2 
 ///@{
 /**
   * @brief  Erase the whole flash chip

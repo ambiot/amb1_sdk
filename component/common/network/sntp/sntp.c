@@ -194,8 +194,13 @@ int sntp_set_timeserver( unsigned int ntp_server_addr )
 {
 	static char str_addr[16];
 	ip_addr_t server_addr;
-
+	
+#if LWIP_VERSION_MAJOR >= 2
+	ip_addr_set_ip4_u32(&server_addr, htonl ( ntp_server_addr ));	 
+#else
 	server_addr.addr = htonl ( ntp_server_addr );
+#endif
+
 	memset(str_addr, 0, sizeof(str_addr));
 	if(ipaddr_ntoa_r(&server_addr, str_addr, 16) == NULL)
 		return -1;

@@ -158,7 +158,7 @@ __weak void __low_level_init(void)
 
 #if defined ( __ICCARM__ )
 #pragma section="SDRBSS"
-#pragma section="SDRBSS"
+#pragma section="TCMBSS"
 #endif
 // The Main App entry point
 void _AppStart(void)
@@ -200,6 +200,13 @@ void _AppStart(void)
 	//DiagPrintf("clean sdram bss %8x to %8x\n\r", __sdram_bss_start__, __sdram_bss_end__);
 	if((int)__sdram_bss_end__-(int)__sdram_bss_start__ > 0)
 		memset(__sdram_bss_start__, 0, (int)__sdram_bss_end__-(int)__sdram_bss_start__);
+
+	// clear TCM bss
+	u8* __tcm_bss_start__		= (u8*)__section_begin("TCMBSS");
+	u8* __tcm_bss_end__			= (u8*)__section_end("TCMBSS");
+	//DiagPrintf("IAR - clean tcm bss %8x to %8x\n\r", __tcm_bss_start__, __tcm_bss_end__);
+	if((int)__tcm_bss_end__-(int)__tcm_bss_start__ > 0)
+		memset(__tcm_bss_start__, 0, (int)__tcm_bss_end__-(int)__tcm_bss_start__);			
 #elif defined ( __GNUC__ )
 	// clear SDRAM bss	
 	extern u8 __sdram_bss_start__[];
@@ -207,6 +214,13 @@ void _AppStart(void)
 	//DiagPrintf("clean sdram bss %8x to %8x\n\r", __sdram_bss_start__, __sdram_bss_end__);
 	if((int)__sdram_bss_end__-(int)__sdram_bss_start__ > 0)
 		_memset(__sdram_bss_start__, 0, (int)__sdram_bss_end__-(int)__sdram_bss_start__);
+		
+	// clear SDRAM bss	
+	extern u8 __tcm_bss_start__[];
+	extern u8 __tcm_bss_end__[];
+	//DiagPrintf("GCC - clean tcm bss %8x to %8x\n\r", __tcm_bss_start__, __tcm_bss_end__);
+	if((int)__tcm_bss_end__-(int)__tcm_bss_start__ > 0)
+		_memset(__tcm_bss_start__, 0, (int)__tcm_bss_end__-(int)__tcm_bss_start__);			
 #else
 	#error !!!!!!NOT Support this compiler!!!!!!
 #endif

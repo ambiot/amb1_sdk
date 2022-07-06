@@ -7,19 +7,11 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2006-2013 ARM Limited
+  * Copyright (c) 2015, Realtek Semiconductor Corp.
+  * All rights reserved.
   *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  *     http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
+  * This module is a confidential and proprietary property of RealTek and
+  * possession or use of this module requires written permission of RealTek.
   ****************************************************************************** 
   */
 
@@ -102,7 +94,7 @@ int efuse_disable_jtag(void);
 
 ///@}
 
-#if CONFIG_PLATFORM_8195A
+#if defined(CONFIG_PLATFORM_8195A) && (CONFIG_PLATFORM_8195A == 1)
 ///@name Ameba1 Only 
 ///@{
 /**
@@ -127,7 +119,7 @@ int efuse_key2_write(u8 address, u8 len, u8 *buf);
 ///@}
 #endif //CONFIG_PLATFORM_8195A
 
-#if CONFIG_PLATFORM_8711B
+#if defined(CONFIG_PLATFORM_8711B) && (CONFIG_PLATFORM_8711B == 1)
 ///@name AmebaZ Only 
 ///@{
 /**
@@ -153,6 +145,107 @@ void efuse_rdp_keyset(u8 *rdp_key);
 void efuse_otf_keyset(u8 *otf_key);
 ///@}
 #endif //CONFIG_PLATFORM_8711B
+
+#if defined(CONFIG_PLATFORM_8195BLP) && (CONFIG_PLATFORM_8195BLP == 1)
+///@name AmebaPro Only 
+///@{
+/**
+  * @brief  Disable LP jtag
+  * @retval 0: Success
+  */
+int efuse_disable_lp_jtag(void);
+
+/**
+  * @brief  Disable HS secure jtag
+  * @retval 0: Success
+  */
+int efuse_disable_sec_jtag(void);
+
+/**
+  * @brief  Disable HS nonsecure jtag
+  * @retval 0: Success
+  */
+int efuse_disable_nonsec_jtag(void);
+///@}
+#endif  // end of "#if defined(CONFIG_PLATFORM_8195BLP)"
+
+#if defined(CONFIG_PLATFORM_8195BHP) && (CONFIG_PLATFORM_8195BHP == 1)
+///@name AmebaPro Only 
+///@{
+/**
+  * @brief  Write secure key to efuse
+  * @param  buf: Specified the 32-byte security key to be programmed.
+  * @retval 0: Success
+  * @retval -1: Failure
+  */
+int efuse_sec_key_write(u8 *buf);
+
+/**
+  * @brief  Write super secure key to efuse
+  * @param  buf: Specified the 32-byte super security key to be programmed.
+  * @retval 0: Success
+  * @retval -1: Failure
+  */
+int efuse_susec_key_write(u8 *buf);
+///@}
+#endif  // end of "#if defined(CONFIG_PLATFORM_8195BHP)"
+
+#if (defined(CONFIG_PLATFORM_8710C) && (CONFIG_PLATFORM_8710C == 1))
+///@name AmebaZII Only 
+///@{
+/**
+  * @brief  Disable secure jtag
+  * @retval 0: Success
+  */
+int efuse_disable_sec_jtag(void);
+
+/**
+  * @brief  Disable nonsecure jtag
+  * @retval 0: Success
+  */
+int efuse_disable_nonsec_jtag(void);
+
+/**
+  * @brief  Write secure key to efuse
+  * @param  buf: Specified the 32-byte security key to be programmed.
+  * @param  key_num: select key number.
+  * @retval 0: Success
+  * @retval -1: Failure
+  */
+int efuse_sec_key_write(u8 *buf, u8 key_num);
+
+/**
+  * @brief  Write super secure key to efuse
+  * @param  buf: Specified the 32-byte super security key to be programmed.
+  * @retval 0: Success
+  * @retval -1: Failure
+  */
+int efuse_susec_key_write(u8 *buf);
+
+/**
+  * @brief  Write secure j-tag key to efuse
+  * @param  buf: Specified the 32-byte security key to be programmed.
+  * @retval 0: Success
+  * @retval -1: Failure
+  */
+int efuse_s_jtag_key_write(u8 *buf);
+
+/**
+  * @brief  Write non-secure j-tag key to efuse
+  * @param  buf: Specified the 32-byte security key to be programmed.
+  * @retval 0: Success
+  * @retval -1: Failure
+  */
+int efuse_ns_jtag_key_write(u8 *buf);
+
+/**
+  * @brief  lock super secure key
+  * @retval 0: Success
+  * @retval -1: Failure
+  */
+int efuse_lock_susec_key(void);
+///@}
+#endif  // end of "#if defined(CONFIG_PLATFORM_8710C)"
 
 /*\@}*/
 

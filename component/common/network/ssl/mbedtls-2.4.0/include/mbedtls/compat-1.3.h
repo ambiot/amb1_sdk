@@ -2246,7 +2246,7 @@
 #define platform_entropy_poll mbedtls_platform_entropy_poll
 #define platform_set_exit mbedtls_platform_set_exit
 #define platform_set_fprintf mbedtls_platform_set_fprintf
-#define platform_set_malloc_free mbedtls_platform_set_malloc_free
+//#define platform_set_malloc_free mbedtls_platform_set_malloc_free
 #define platform_set_printf mbedtls_platform_set_printf
 #define platform_set_snprintf mbedtls_platform_set_snprintf
 #define polarssl_exit mbedtls_exit

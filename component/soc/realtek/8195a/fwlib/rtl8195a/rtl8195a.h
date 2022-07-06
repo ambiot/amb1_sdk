@@ -133,6 +133,11 @@
 #include "rtl8195a_mii.h"
 #endif
 
+//Secure boot
+#define SECURE_BOOT 0
+#define ROLLBACK 0
+#define SWAPCHECK 0
+
 // firmware information, located at the header of Image2
 #define FW_VERSION          (0x0100)
 #define FW_SUBVERSION       (0x0001)

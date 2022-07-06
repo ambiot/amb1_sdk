@@ -13,7 +13,7 @@ Configuration:
 
 [platform_opts.h]
 	#define CONFIG_EXAMPLE_OTA_HTTP    1
-[ota_8195a.h]
+[ota_8195a.h for Ameba1, rtl8710b_ota.h for AmebaZ]
 	#define HTTP_OTA_UPDATE	
 
 Execution:

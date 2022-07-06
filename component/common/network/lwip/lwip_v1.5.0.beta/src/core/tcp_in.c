@@ -1088,7 +1088,9 @@ tcp_receive(struct tcp_pcb *pcb)
           }
           LWIP_DEBUGF(TCP_CWND_DEBUG, ("tcp_receive: slow start cwnd %"TCPWNDSIZE_F"\n", pcb->cwnd));
         } else {
-          tcpwnd_size_t new_cwnd = (pcb->cwnd + pcb->mss * pcb->mss / pcb->cwnd);
+          // Workaround to prevent compiler did not handle 16bit calculation correctly. By RTK.
+          u32_t new_cwnd = (pcb->cwnd + pcb->mss * pcb->mss / pcb->cwnd);
+          new_cwnd = new_cwnd & 0xFFFF;
           if (new_cwnd > pcb->cwnd) {
             pcb->cwnd = new_cwnd;
           }

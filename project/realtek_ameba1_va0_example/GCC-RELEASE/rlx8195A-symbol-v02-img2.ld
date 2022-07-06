@@ -78,10 +78,12 @@ SECTIONS
   OVERLAY 0x1FFF0000:
   {
   	.valid
-  	{ 
+  	{
+  		__tcm_bss_start__ = .; 
 	    *mem.o (.bss*)
 	    *memp.o (.bss*)
 	    *(.tcm.heap)
+	    __tcm_bss_end__ = .;
   	}
   	.dummy 
   	{ 
@@ -186,7 +188,6 @@ SECTIONS
     *(.p2p.text*)
     *(.wps.text*)
     *(.websocket.text*)
-    *(.mdns.text*)
   } > SDRAM_RAM
 
   .sdr_rodata :
@@ -195,16 +196,14 @@ SECTIONS
     *(.p2p.rodata*)
     *(.wps.rodata*)
     *(.websocket.rodata*)
-    *(.mdns.rodata*)
   } > SDRAM_RAM
 
   .sdr_data : 
   {
     *(.sdram.data*)
     *(.p2p.data*)
-    *(.wps.data*)    
+    *(.wps.data*)
     *(.websocket.data*)
-    *(.mdns.data*)
     . = ALIGN(256);
     *(.fpb.remap*)
     . = ALIGN(4);
@@ -218,7 +217,6 @@ SECTIONS
     *(.p2p.bss*)
     *(.wps.bss*)
     *(.websocket.bss*)
-    *(.mdns.bss*)
     __sdram_bss_end__ = .;
   } > SDRAM_RAM
 

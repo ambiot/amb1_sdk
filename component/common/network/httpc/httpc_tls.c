@@ -1,8 +1,23 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "platform_stdlib.h"
-
+#include "osdep_service.h"
+#include <lwip/sockets.h>
 #include "httpc.h"
+
+int httpc_setsockopt_rcvtimeo(struct httpc_conn* conn, int recv_timeout)
+{
+	int ret = 0;
+#if defined(LWIP_SO_SNDRCVTIMEO_NONSTANDARD) && (LWIP_SO_SNDRCVTIMEO_NONSTANDARD == 0)	//lwip 2.0.2
+	struct timeval timeout;
+	timeout.tv_sec  = recv_timeout / 1000;
+	timeout.tv_usec = ( recv_timeout % 1000 ) * 1000;
+	ret = setsockopt(conn->sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+#else	//lwip 1.4.1
+	ret = setsockopt(conn->sock, SOL_SOCKET, SO_RCVTIMEO, &recv_timeout, sizeof(recv_timeout));
+#endif
+	return ret;
+}
 
 #if (HTTPC_USE_TLS == HTTPC_TLS_POLARSSL)
 #include "polarssl/ssl.h"
@@ -45,6 +60,10 @@ struct httpc_tls {
 
 static int _verify_func(void *data, mbedtls_x509_crt *crt, int depth, uint32_t *flags)
 {
+	/* To avoid gcc warnings */
+	( void ) data;
+	( void ) depth;
+	
 	char buf[1024];
 	mbedtls_x509_crt_info(buf, sizeof(buf) - 1, "", crt);
 
@@ -73,6 +92,9 @@ static void* _calloc_func(size_t nmemb, size_t size)
 
 static int _random_func(void *p_rng, unsigned char *output, size_t output_len)
 {
+	/* To avoid gcc warnings */
+	( void ) p_rng;
+	
 	rtw_get_random_bytes(output, output_len);
 	return 0;
 }
@@ -93,7 +115,11 @@ void *httpc_tls_new(int *sock, char *client_cert, char *client_key, char *ca_cer
 		x509_crt_init(&tls->ca);
 		x509_crt_init(&tls->cert);
 		pk_init(&tls->key);
-		ssl_init(ssl);
+		if((ret = ssl_init(ssl))!=0){
+                        printf("\n[HTTPC] ERROR: ssl_init %d\n", ret);
+                        ret = -1;
+                        goto exit;
+		} 
 		ssl_set_endpoint(ssl, SSL_IS_CLIENT);
 		ssl_set_authmode(ssl, SSL_VERIFY_NONE);
 		ssl_set_rng(ssl, _random_func, NULL);
@@ -345,7 +371,7 @@ int httpc_base64_encode(uint8_t *data, size_t data_len, char *base64_buf, size_t
 	int ret = 0;
 	size_t output_len = 0;
 
-	if((ret = mbedtls_base64_encode(base64_buf, buf_len, &output_len, data, data_len)) != 0) {
+	if((ret = mbedtls_base64_encode((unsigned char*)base64_buf, buf_len, &output_len, data, data_len)) != 0) {
 		printf("\n[HTTPC] ERROR: mbedtls_base64_encode %d\n", ret);
 		ret = -1;
 	}

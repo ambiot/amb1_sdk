@@ -269,7 +269,7 @@ extern _LONG_CALL_ int dwc_otg_pcd_iso_ep_start(dwc_otg_pcd_t * pcd, void *ep_ha
 				    uint8_t * buf0, uint8_t * buf1,
 				    dwc_dma_t dma0, dwc_dma_t dma1,
 				    int sync_frame, int dp_frame,
-				    int data_per_frame, int start_frame,
+				    int data_per_frame, int data_per_frame1, int start_frame,
 				    int buf_proc_intrvl, void *req_handle,
 				    int atomic_alloc);
 

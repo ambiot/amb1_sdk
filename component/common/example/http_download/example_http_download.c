@@ -7,9 +7,9 @@
 #include <lwip/sockets.h>
 #include <lwip/netdb.h>
 
-#define SERVER_HOST    "tpdb.speed2.hinet.net"
+#define SERVER_HOST    "176.34.62.248"
 #define SERVER_PORT    80
-#define RESOURCE       "/test_010m.zip"
+#define RESOURCE       "/repository/IOT/Project_Cloud_A.bin"
 #define BUFFER_SIZE    2048
 #define RECV_TO        5000	// ms
 

@@ -21,6 +21,14 @@ for /f %%i in ('cmd /c "%tooldir%\readelf -S Debug/Exe/bootloader.axf | %tooldir
 ::echo %sectname_img1% rw > tmp.txt
 %tooldir%\objcopy -j "%sectname_img1% rw" -Obinary Debug/Exe/bootloader.axf Debug/Exe/ram_1.bin
 
+set maxbytesize=0
+set file="Debug/Exe/ram_1.bin"
+FOR /F "usebackq" %%A IN ('%file%') DO set size=%%~zA
+
+if %size% EQU %maxbytesize% (
+%tooldir%\objcopy -j "%sectname_img1%" -Obinary Debug/Exe/bootloader.axf Debug/Exe/ram_1.bin
+)
+
 %tooldir%\pick %ram1_start% %ram1_end% Debug\Exe\ram_1.bin Debug\Exe\ram_1.p.bin head 0xb000
 %tooldir%\pick %ram1_start% %ram1_end% Debug\Exe\ram_1.bin Debug\Exe\ram_1.r.bin raw
 

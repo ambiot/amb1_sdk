@@ -9,7 +9,9 @@ set ota_offset=%3
 for /f "usebackq" %%i in (`hostname`) do set hostname=%%i
 ::echo %hostname%
 
-echo #define UTS_VERSION "%date:~0,10%-%time:~0,8%" > ..\inc\build_info.h
+echo #define RTL_FW_COMPILE_TIME RTL8195AFW_COMPILE_TIME > ..\inc\build_info.h
+echo #define RTL_FW_COMPILE_DATE RTL8195AFW_COMPILE_DATE >> ..\inc\build_info.h
+echo #define UTS_VERSION "%date:~0,10%-%time:~0,8%" >> ..\inc\build_info.h
 echo #define RTL8195AFW_COMPILE_TIME "%date:~0,10%-%time:~0,8%" >> ..\inc\build_info.h
 echo #define RTL8195AFW_COMPILE_DATE "%date:~0,10%" >> ..\inc\build_info.h
 echo #define RTL8195AFW_COMPILE_BY "%USERNAME%" >> ..\inc\build_info.h

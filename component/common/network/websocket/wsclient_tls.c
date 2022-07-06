@@ -1,5 +1,6 @@
 #include "platform_opts.h"
 #include <websocket/libwsclient.h>
+#include "FreeRTOS.h"
 
 #if (WSCLIENT_USE_TLS == WSCLIENT_TLS_POLARSSL)
 #include "polarssl/net.h"
@@ -48,7 +49,7 @@ static char *ws_itoa(int value){
 #endif /* WSCLIENT_USE_TLS */
 
 int ws_random(void *p_rng, unsigned char *output, size_t output_len);
-
+extern int mbedtls_platform_set_calloc_free( void * (*calloc_func)( size_t, size_t ), void (*free_func)( void * ) );
 void *wss_tls_connect(int *sock , char *host, int port){
 #if (WSCLIENT_USE_TLS == WSCLIENT_TLS_POLARSSL)
 	int ret;
@@ -108,6 +109,7 @@ exit:
 
 		if((ret = mbedtls_net_connect(server_fd, host, port_str, MBEDTLS_NET_PROTO_TCP)) != 0){
 			printf("\n[WSCLIENT] ERROR: net_connect %d\n", ret);
+			free(port_str);
 			goto exit;
 		}
 
@@ -127,6 +129,13 @@ exit:
 
 		mbedtls_ssl_conf_authmode(conf, MBEDTLS_SSL_VERIFY_NONE);
 		mbedtls_ssl_conf_rng(conf, ws_random, NULL);
+
+#if MBEDTLS_SSL_MAX_CONTENT_LEN == 4096
+		if(ret = mbedtls_ssl_conf_max_frag_len(conf, MBEDTLS_SSL_MAX_FRAG_LEN_4096) < 0) {
+			printf("\n[WSCLIENT] ERROR: mbedtls_ssl_conf_max_frag_len %d\n", ret);
+			goto exit;
+		}
+#endif
 
 		if((ret = mbedtls_ssl_setup(ssl, conf)) != 0) {
 			printf("\n[WSCLIENT] ERROR: ssl_setup %d\n", ret);
@@ -204,7 +213,8 @@ void wss_tls_close(void *tls_in,int *sock){
 		*sock = -1;
 	}
 	mbedtls_ssl_free(&tls->ctx);
-	mbedtls_ssl_config_free(&tls->conf);
+	if(tls)
+		mbedtls_ssl_config_free(&tls->conf);
 	free(tls);
 	tls = NULL;
 #endif /* WSCLIENT_USE_TLS */
@@ -219,7 +229,7 @@ int wss_tls_write(void *tls_in, char *request, int request_len){
 	if(ret == POLARSSL_ERR_NET_WANT_READ || ret == POLARSSL_ERR_NET_WANT_WRITE)
 		ret = 0;
 #elif (WSCLIENT_USE_TLS == WSCLIENT_TLS_MBEDTLS)
-	ret = mbedtls_ssl_write(&tls->ctx, request, request_len);
+	ret = mbedtls_ssl_write(&tls->ctx, (unsigned char const*)request, request_len);
 	if(ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE)
 		ret = 0;
 #endif /* WSCLIENT_USE_TLS */
@@ -236,7 +246,7 @@ int wss_tls_read(void *tls_in, char *buffer, int buf_len){
 			|| ret == POLARSSL_ERR_NET_RECV_FAILED)
 		ret =0;
 #elif (WSCLIENT_USE_TLS == WSCLIENT_TLS_MBEDTLS)
-	ret = mbedtls_ssl_read(&tls->ctx, buffer, buf_len);
+	ret = mbedtls_ssl_read(&tls->ctx, (unsigned char*)buffer, buf_len);
 	if(ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE
 			|| ret == MBEDTLS_ERR_NET_RECV_FAILED)
 		ret =0;

@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include "PinNames.h"
 #include "basic_types.h"
-#include "diag.h" 
+#include "diag.h"
+#if defined(CONFIG_PLATFORM_8195A)
 #include <osdep_api.h>
+#endif
 
 #include "i2c_api.h"
 #include "pinmap.h"

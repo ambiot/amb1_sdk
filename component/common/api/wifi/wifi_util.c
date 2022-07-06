@@ -267,6 +267,23 @@ int wext_get_enc_ext(const char *ifname, __u16 *alg, __u8 *key_idx, __u8 *passph
 
 	if(ext != NULL)
 		free(ext);
+	
+	return ret;
+}
+
+int wext_get_auth_type(const char *ifname, __u32 *auth_type)
+{
+	struct iwreq iwr;
+	int ret = 0;
+
+	memset(&iwr, 0, sizeof(iwr));
+
+	if (iw_ioctl(ifname, SIOCGIWAUTH, &iwr) < 0) {
+		printf("\n\rioctl[SIOCGIWAUTH] error");
+		ret = -1;
+	}else{
+		*auth_type = (__u32) iwr.u.param.value;
+	}
 
 	return ret;
 }
@@ -674,6 +691,11 @@ int wext_set_ap_ssid(const char *ifname, const __u8 *ssid, __u16 ssid_len)
 {
 	struct iwreq iwr;
 	int ret = 0;
+
+	if(ssid_len > 32){
+		printf("Error: SSID should be 0-32 characters\r\n");
+		return RTW_BADARG;
+	}
 
 	memset(&iwr, 0, sizeof(iwr));
 	iwr.u.essid.pointer = (void *) ssid;
@@ -1343,14 +1365,21 @@ int wext_set_trp_tis(__u8 enable)
 	extern u8 rtw_tx_pwr_by_rate;
 	extern u8 rtw_trp_tis_test_en;
 
-	if(enable == ENABLE){
+	if(enable != RTW_TRP_TIS_DISABLE){
 		//close the tx power limit and pwr by rate incase the efficiency of Antenna is not good enough.
 		rtw_tx_pwr_lmt_enable = 2;//set 0 to disable, set 2 to use efuse value
 		rtw_tx_pwr_by_rate = 2;//set 0 to disable, set 2 to use efuse value
-		//disable some dynamic mechanism
-		rtw_trp_tis_test_en = 1;
+		if(enable == RTW_TRP_TIS_NORMAL){
+			//disable some dynamic mechanism
+			rtw_trp_tis_test_en = BIT0;
+		}else if(enable == RTW_TRP_TIS_DYNAMIC){
+			rtw_trp_tis_test_en = BIT1 | BIT0;
+		}else if(enable == RTW_TRP_TIS_FIX_ACK_RATE){
+			rtw_trp_tis_test_en = BIT2 | BIT0;
+		}
 		//you can change autoreconnct mode to RTW_AUTORECONNECT_INFINITE in init_thread function
 	}
+	return 0;
 }
 
 #if defined(CONFIG_WLAN_LOW_PW)
@@ -1502,6 +1531,10 @@ void wext_suspend_softap_beacon(const char *ifname)
 {
 	rltk_suspend_softap_beacon(ifname);
 }
+void wext_resume_softap(const char *ifname)
+{
+	rltk_resume_softap(ifname);
+}
 int wext_ap_switch_chl_and_inform(unsigned char new_channel)
 {
 	if(rtw_ap_switch_chl_and_inform(new_channel))
@@ -1533,7 +1566,31 @@ int wext_get_sw_trx_statistics(const char *ifname, rtw_net_device_stats_t *stats
 {
 	return rltk_get_sw_trx_statistics(ifname, stats);
 }
+#ifndef CONFIG_MCC_STA_AP_MODE
+extern int rtw_get_RxInfo(const char *ifname,u8* BeaconCnt, int *rssi, u8* CurIGValue, u32* Fa_Ofdm_count, u32* Fa_Cck_count);
+int wext_get_RxInfo(const char *ifname, __u8* BeaconCnt, int *rssi, __u8* CurIGValue, __u32* Fa_Ofdm_count, __u32* Fa_Cck_count)
+{
+	return rtw_get_RxInfo(ifname, BeaconCnt, rssi, CurIGValue, Fa_Ofdm_count, Fa_Cck_count);
+}
 
+extern int rtw_get_RxCrcInfo(const char *ifname, u32* CCK_Crc_Fail, u32* CCK_Crc_OK, u32* OFDM_Crc_Fail, u32* OFDM_Crc_OK, u32* HT_Crc_Fail, u32* HT_Crc_OK);
+int wext_get_RxCrcInfo(const char *ifname, __u32* CCK_Crc_Fail, __u32* CCK_Crc_OK, __u32* OFDM_Crc_Fail, __u32* OFDM_Crc_OK, __u32* HT_Crc_Fail, __u32* HT_Crc_OK)
+{
+	return rtw_get_RxCrcInfo(ifname, CCK_Crc_Fail, CCK_Crc_OK, OFDM_Crc_Fail, OFDM_Crc_OK, HT_Crc_Fail, HT_Crc_OK);
+}
+
+extern int rtw_get_TxInfo(const char *ifname, u32 *tx_ok, u32 *tx_retry, u32 *tx_drop);
+int wext_get_TxInfo(const char *ifname, __u32 *tx_ok, __u32 *tx_retry, __u32 *tx_drop)
+{
+	return rtw_get_TxInfo(ifname, tx_ok, tx_retry, tx_drop);
+}
+
+extern int rtw_get_PSInfo(const char *ifname, u32* tim_wake_up_count);
+int wext_get_PSInfo(const char *ifname, __u32* tim_wake_up_count)
+{
+	return rtw_get_PSInfo(ifname, tim_wake_up_count);
+}
+#endif
 #ifdef CONFIG_SYNCPKT
 int wext_set_syncpkt_da(const char *ifname, __u8 *da)
 {
@@ -1585,4 +1642,76 @@ int wext_disable_fw_ips(const char *ifname, __u8 enable)
     return ret;
 }
 #endif
+
+/**
+ * \brief          This function can set adaptivity enable value in runtime.
+ *
+ * \param ifname   "wlan0" / "wlan1"
+ * \param value    0 diable, 1 enable
+ * \return         0 success, others fail
+ */
+int wext_set_adaptivity_enable(const char *ifname, __u8 value)
+{
+	int ret = 0;
+	struct iwreq iwr;
+
+	memset(&iwr, 0, sizeof(iwr));
+	iwr.u.param.value = value;
+
+	if (iw_ioctl(ifname, SIOCSIWPRIVADAPTIVITY, &iwr) < 0) {
+		printf("\n\rwext_set_adaptivity_enable():ioctl[SIOCSIWPRIVADAPTIVITY] error");
+		ret = -1;
+	}
+
+	return ret;
+}
+
+extern u8 rtw_get_adaptivity_enable(const char *ifname);
+/**
+ * \brief          This function can get adaptivity enable value in use.
+ *
+ * \param ifname   "wlan0" / "wlan1"
+ * \return         0 disable, 1 enable
+ */
+__u8 wext_get_adaptivity_enable(const char *ifname)
+{
+	return rtw_get_adaptivity_enable(ifname);
+}
+
+extern int rtw_set_adaptivity_mode(const char *ifname, u8 mode);
+/**
+ * \brief          This function can set adaptivity mode in runtime.
+ *
+ * \param ifname   "wlan0" / "wlan1"
+ * \param mode     0 RTW_ADAPTIVITY_NORMAL, 1 RTW_ADAPTIVITY_CARRIER_SENSE
+ * \return         0 success, others fail
+ */
+int wext_set_adaptivity_mode(const char *ifname, __u8 mode)
+{
+	return rtw_set_adaptivity_mode(ifname, mode);
+}
+
+extern u8 rtw_get_adaptivity_mode(const char *ifname);
+/**
+ * \brief          This function can get adaptivity mode in use.
+ *
+ * \param ifname   "wlan0" / "wlan1"
+ * \return         0 RTW_ADAPTIVITY_NORMAL, 1 RTW_ADAPTIVITY_CARRIER_SENSE
+ */
+__u8 wext_get_adaptivity_mode(const char *ifname)
+{
+	return rtw_get_adaptivity_mode(ifname);
+}
+
+extern u8 rtw_get_channel_plan(const char *ifname);
+/**
+ * \brief          This function can get channel plan in use.
+ *
+ * \param ifname   "wlan0" / "wlan1"
+ * \return         refer to enum _RT_CHANNEL_DOMAIN, RT_CHANNEL_DOMAIN_WORLD_NULL = 0x20, RT_CHANNEL_DOMAIN_ETSI1_NULL = 0x21 etc.
+ */
+__u8 wext_get_channel_plan(const char *ifname)
+{
+	return rtw_get_channel_plan(ifname);
+}
 

@@ -313,7 +313,7 @@ int i2c_read(i2c_t *obj, int address, char *data, int length, int stop) {
                     //HalDelayUs(1000);
                     //RtkI2CInit(pSalI2CHND);
                     
-                    return ((int)(length));
+                    return ((int)(length - pSalI2CHND->pRXBuf->DataLen));
                 }
             }
             else {
@@ -325,15 +325,15 @@ int i2c_read(i2c_t *obj, int address, char *data, int length, int stop) {
                     
                     //RtkI2CInit(pSalI2CHND);
                     
-                    return ((int)(length));
+                    return ((int)(length - pSalI2CHND->pRXBuf->DataLen));
                 }
             }  
         }
         //DBG_8195A("<\n");
-        if (pSalI2CHND->DevSts != I2C_STS_TIMEOUT) 
-            return ((int)(length - pSalI2CHND->pRXBuf->DataLen));
-        else
-            return ((int)(length));
+        //if (pSalI2CHND->DevSts != I2C_STS_TIMEOUT) 
+        return ((int)(length - pSalI2CHND->pRXBuf->DataLen));
+        //else
+        //    return ((int)(length));
     }
 }
 
@@ -382,7 +382,6 @@ int i2c_write(i2c_t *obj, int address, const char *data, int length, int stop) {
         return ((int)length);
     }
     else {
-        //DBG_8195A("(\n");
         /* Calculate user time out parameters */
         I2CInTOTcnt = 300;
         if ((I2CInTOTcnt != 0) && (I2CInTOTcnt != I2C_TIMEOOUT_ENDLESS)) {
@@ -401,7 +400,7 @@ int i2c_write(i2c_t *obj, int address, const char *data, int length, int stop) {
                     //RtkI2CDeInit(pSalI2CHND);
                     
                     //RtkI2CInit(pSalI2CHND);
-                    return ((int)(length));
+                    return ((int)(length - pSalI2CHND->pTXBuf->DataLen));
                 }
             }
             else {
@@ -412,15 +411,15 @@ int i2c_write(i2c_t *obj, int address, const char *data, int length, int stop) {
                     //RtkI2CDeInit(pSalI2CHND);
                     
                     //RtkI2CInit(pSalI2CHND);
-                    return ((int)(length));
+                    return ((int)(length - pSalI2CHND->pTXBuf->DataLen));
                 }
             }         
         }
 
-        if (pSalI2CHND->DevSts != I2C_STS_TIMEOUT)
-            return ((int)(length - pSalI2CHND->pTXBuf->DataLen));
-        else
-            return ((int)(length));
+        //if (pSalI2CHND->DevSts != I2C_STS_TIMEOUT)
+        return ((int)(length - pSalI2CHND->pTXBuf->DataLen));
+        //else
+        //    return ((int)(length));
     }
 }
 
@@ -505,7 +504,7 @@ void i2c_restart_enable(i2c_t *obj) {
     }
     
     pSalI2CHND->pInitDat->I2CReSTR  = I2C_ENABLE;
-    
+    pSalI2CHND->I2CExd     	|= (I2C_EXD_MTR_ADDR_RTY);
 }
 
 void i2c_restart_disable(i2c_t *obj) {
@@ -533,7 +532,7 @@ void i2c_restart_disable(i2c_t *obj) {
     }
 
     pSalI2CHND->pInitDat->I2CReSTR  = I2C_DISABLE;
-    
+    pSalI2CHND->I2CExd     	&= ~(I2C_EXD_MTR_ADDR_RTY);
 }
 
 void i2c_set_user_callback(i2c_t *obj, I2CCallback i2ccb, void(*i2c_callback)(void *)) {
@@ -687,7 +686,7 @@ int i2c_slave_read(i2c_t *obj, char *data, int length) {
     pSalI2CHND->pRXBuf->pDataBuf  = (u8 *)data;
 
     if (RtkI2CReceive(pSalI2CHND) != HAL_OK) {
-        return 0;   //error
+        return ((int)(length - pSalI2CHND->pTXBuf->DataLen));   //error
     }
     else {
         /* Calculate user time out parameters */
@@ -704,22 +703,22 @@ int i2c_slave_read(i2c_t *obj, char *data, int length) {
                 if (HAL_TIMEOUT == I2CIsTimeout(InStartCount, InTimeoutCount)) {
                     pSalI2CHND->DevSts  = I2C_STS_TIMEOUT;
                     pSalI2CHND->ErrType = I2C_ERR_RX_ADD_TO;
-                    return ((int)(length));
+                    return ((int)(length - pSalI2CHND->pTXBuf->DataLen));
                 }
             }
             else {
                 if (I2CInTOTcnt == 0) {
                     pSalI2CHND->DevSts  = I2C_STS_TIMEOUT;
                     pSalI2CHND->ErrType = I2C_ERR_RX_ADD_TO;
-                    return ((int)(length));
+                    return ((int)(length - pSalI2CHND->pTXBuf->DataLen));
                 }
             }         
         }
 
-        if (pSalI2CHND->DevSts != I2C_STS_TIMEOUT)
-            return ((int)(length - pSalI2CHND->pTXBuf->DataLen));
-        else
-            return ((int)(length));
+        //if (pSalI2CHND->DevSts != I2C_STS_TIMEOUT)
+        return ((int)(length - pSalI2CHND->pTXBuf->DataLen));
+        //else
+        //return ((int)(length));
     }
 }
 
@@ -736,10 +735,10 @@ int i2c_slave_write(i2c_t *obj, const char *data, int length) {
     pSalI2CHND->pTXBuf->pDataBuf  = (u8 *)data;
 
     if (RtkI2CSend(pSalI2CHND) != HAL_OK) {
-        return 0;   //error
+        return ((int)(length - pSalI2CHND->pTXBuf->DataLen));   //error
     }
 
-    return 1;
+    return 0;
 }
 
 /** \brief Description of i2c_slave_set_for_rd_req

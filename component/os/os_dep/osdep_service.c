@@ -707,6 +707,16 @@ int rtw_pop_from_xqueue( _xqueue* queue, void* message, u32 timeout_ms )
 	return FAIL;
 }
 
+int rtw_peek_from_xqueue( _xqueue* queue, void* message, u32 timeout_ms )
+{
+	if(osdep_service.rtw_peek_from_xqueue)
+		return (int)osdep_service.rtw_peek_from_xqueue(queue, message, timeout_ms);
+	else
+		OSDEP_DBG("Not implement osdep service: rtw_peek_from_xqueue");
+
+	return FAIL;
+}
+
 int rtw_deinit_xqueue( _xqueue* queue )
 {
 	if(osdep_service.rtw_deinit_xqueue)

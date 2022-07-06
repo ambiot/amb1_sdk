@@ -76,6 +76,15 @@ extern u32 SystemGetCpuClk(void);
  */
 u32 Gen_RandomSeed(VOID);
 
+/**
+  * @brief  get the state of rdp, enable or disable
+  * @retval : This parameter can be one of the following values:
+  *            @arg TRUE: rdp is enable
+  *            @arg FALSE: rdp is disable
+  */
+u32 IsRDPenabled(void);
+
+
 #ifdef __cplusplus
 }
 #endif

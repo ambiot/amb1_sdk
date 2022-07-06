@@ -387,7 +387,7 @@ extern const osThreadDef_t os_thread_def_##name
 #else                            // define the object
 #define osThreadDef(name, priority, instances, stacksz)  \
 const osThreadDef_t os_thread_def_##name = \
-{ (name), (priority), (instances), (stacksz), #name  }
+{ (os_pthread)(name), (priority), (instances), (stacksz), #name  }
 #endif
 
 /// Access a Thread definition.

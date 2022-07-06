@@ -65,7 +65,6 @@ void pin_mode(PinName pin, PinMode mode)
 			pull_type = GPIO_PuPd_UP;
 		break;
 
-		case OpenDrain:
 		default:
 			pull_type = GPIO_PuPd_NOPULL;
 		break;

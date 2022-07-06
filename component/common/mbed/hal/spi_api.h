@@ -38,15 +38,15 @@ extern "C" {
  */
 
 
-#if CONFIG_PLATFORM_8711B
-///@name AmebaZ Only 
+#if ((defined(CONFIG_PLATFORM_8711B) && (CONFIG_PLATFORM_8711B == 1)) || (defined (CONFIG_PLATFORM_8721D) && (CONFIG_PLATFORM_8721D == 1)))
+///@name AmebaZ and AmebaD 
 ///@{
 typedef enum {
 	MBED_SPI0 = 0xF0,	/*!< means SPI0 */
 	MBED_SPI1 = 0xF1,	/*!< means SPI1 */
 } MBED_SPI_IDX;
 ///@}
-#endif //CONFIG_PLATFORM_8711B
+#endif //CONFIG_PLATFORM_8711B || CONFIG_PLATFORM_8721D
 
 ///@name Ameba Common
 ///@{

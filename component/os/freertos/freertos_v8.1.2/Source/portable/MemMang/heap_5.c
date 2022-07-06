@@ -155,6 +155,12 @@ static BlockLink_t xStart, *pxEnd = NULL;
 fragmentation. */
 static size_t xFreeBytesRemaining = 0;
 static size_t xMinimumEverFreeBytesRemaining = 0;
+#if defined CONFIG_PLATFORM_8195A
+#define SRAM_START_ADDRESS   0x10000000
+#define SDRAM_START_ADDRESS  0x30000000
+static size_t xSRAMFreeBytesRemaining = 0;
+static size_t xSDRAMFreeBytesRemaining = 0;
+#endif
 
 /* Gets set to the top bit of an size_t type.  When this bit in the xBlockSize
 member of an BlockLink_t structure is set then the block belongs to the
@@ -187,9 +193,7 @@ HeapRegion_t xHeapRegions[] =
 {
 	{ 0, 0},	// Image1 reserved ,length will be corrected in pvPortMalloc()
 	{ ucHeap, sizeof(ucHeap) }, 	// Defines a block from ucHeap
-#if (CONFIG_ENABLE_RDP == 0)	
-	{ (uint8_t*)0x1003f000, 0x1000},	// RDP reserved
-#endif	
+	{ 0, 0},	// RDP reserved, will be corrected in pvPortMalloc()
 	{ NULL, 0 } 					// Terminates the array.
 };
 #else
@@ -227,6 +231,15 @@ void *pvReturn = NULL;
 #if (defined CONFIG_PLATFORM_8711B)
 		xHeapRegions[ 0 ].xSizeInBytes = (uint32_t)((uint8_t*)0x10005000 - (uint8_t*)boot_export_symbol.boot_ram_end);
 		xHeapRegions[ 0 ].pucStartAddress = (uint8_t*)boot_export_symbol.boot_ram_end;
+
+		if(!IsRDPenabled()){
+			xHeapRegions[ 2 ].xSizeInBytes = 0x1000;
+			xHeapRegions[ 2 ].pucStartAddress = (uint8_t*)0x1003f000;
+		}else{
+			xHeapRegions[ 2 ].xSizeInBytes = 0;
+			xHeapRegions[ 2 ].pucStartAddress = NULL;
+		}
+		
 #endif		
 		vPortDefineHeapRegions( xHeapRegions );
 	}
@@ -246,7 +259,8 @@ void *pvReturn = NULL;
 		{
 			/* The wanted size is increased so it can contain a BlockLink_t
 			structure in addition to the requested amount of bytes. */
-			if( xWantedSize > 0 )
+			if( ( xWantedSize > 0 ) &&
+				( ( xWantedSize + uxHeapStructSize ) >  xWantedSize ) ) /* Overflow check */
 			{
 				xWantedSize += uxHeapStructSize;
 
@@ -254,8 +268,16 @@ void *pvReturn = NULL;
 				of bytes. */
 				if( ( xWantedSize & portBYTE_ALIGNMENT_MASK ) != 0x00 )
 				{
-					/* Byte alignment required. */
-					xWantedSize += ( portBYTE_ALIGNMENT - ( xWantedSize & portBYTE_ALIGNMENT_MASK ) );
+					/* Byte alignment required. Check for overflow */
+					if( ( xWantedSize + ( portBYTE_ALIGNMENT - ( xWantedSize & portBYTE_ALIGNMENT_MASK ) ) ) >
+						xWantedSize )
+					{
+						xWantedSize += ( portBYTE_ALIGNMENT - ( xWantedSize & portBYTE_ALIGNMENT_MASK ) );
+					} 
+					else 
+					{
+						xWantedSize = 0;
+					}
 				}
 				else
 				{
@@ -264,13 +286,13 @@ void *pvReturn = NULL;
 			}
 			else
 			{
-				mtCOVERAGE_TEST_MARKER();
+				xWantedSize = 0;
 			}
 
 			if( ( xWantedSize > 0 ) && ( xWantedSize <= xFreeBytesRemaining ) )
 			{
 				/* Traverse the list from the start	(lowest address) block until
-				one	of adequate size is found. */
+				one of adequate size is found. */
 				pxPreviousBlock = &xStart;
 				pxBlock = xStart.pxNextFreeBlock;
 				while( ( pxBlock->xBlockSize < xWantedSize ) && ( pxBlock->pxNextFreeBlock != NULL ) )
@@ -280,7 +302,7 @@ void *pvReturn = NULL;
 				}
 
 				/* If the end marker was reached then a block of adequate size
-				was	not found. */
+				was not found. */
 				if( pxBlock != pxEnd )
 				{
 					/* Return the memory space pointed to - jumping over the
@@ -315,7 +337,12 @@ void *pvReturn = NULL;
 					}
 
 					xFreeBytesRemaining -= pxBlock->xBlockSize;
-
+#if defined CONFIG_PLATFORM_8195A
+					if(((uint32_t) pxBlock >= SRAM_START_ADDRESS) && ((uint32_t) pxBlock < SDRAM_START_ADDRESS))
+						xSRAMFreeBytesRemaining -= pxBlock->xBlockSize;
+					else if((uint32_t) pxBlock >= SDRAM_START_ADDRESS)
+						xSDRAMFreeBytesRemaining -= pxBlock->xBlockSize;
+#endif
 					if( xFreeBytesRemaining < xMinimumEverFreeBytesRemaining )
 					{
 						xMinimumEverFreeBytesRemaining = xFreeBytesRemaining;
@@ -397,6 +424,12 @@ BlockLink_t *pxLink;
 				{
 					/* Add this block to the list of free blocks. */
 					xFreeBytesRemaining += pxLink->xBlockSize;
+#if defined CONFIG_PLATFORM_8195A
+					if(((uint32_t) pxLink >= SRAM_START_ADDRESS) && ((uint32_t) pxLink < SDRAM_START_ADDRESS))
+						xSRAMFreeBytesRemaining += pxLink->xBlockSize;
+					else if((uint32_t) pxLink >= SDRAM_START_ADDRESS)
+						xSDRAMFreeBytesRemaining += pxLink->xBlockSize;
+#endif
 					traceFREE( pv, pxLink->xBlockSize );
 					prvInsertBlockIntoFreeList( ( ( BlockLink_t * ) pxLink ) );
 				}
@@ -441,6 +474,16 @@ size_t xPortGetFreeHeapSize( void )
 {
 	return xFreeBytesRemaining;
 }
+#if defined CONFIG_PLATFORM_8195A
+size_t xPortGetSRAMFreeHeapSize( void )
+{
+	return xSRAMFreeBytesRemaining;
+}
+size_t xPortGetSDRAMFreeHeapSize( void )
+{
+	return xSDRAMFreeBytesRemaining;
+}
+#endif
 /*-----------------------------------------------------------*/
 
 size_t xPortGetMinimumEverFreeHeapSize( void )
@@ -515,6 +558,9 @@ void vPortDefineHeapRegions( const HeapRegion_t * const pxHeapRegions )
 BlockLink_t *pxFirstFreeBlockInRegion = NULL, *pxPreviousFreeBlock;
 uint8_t *pucAlignedHeap;
 size_t xTotalRegionSize, xTotalHeapSize = 0;
+#if defined CONFIG_PLATFORM_8195A
+size_t xSRAMTotalHeapSize = 0, xSDRAMTotalHeapSize = 0;
+#endif
 BaseType_t xDefinedRegions = 0;
 uint32_t ulAddress;
 const HeapRegion_t *pxHeapRegion;
@@ -587,7 +633,12 @@ const HeapRegion_t *pxHeapRegion;
 		}
 
 		xTotalHeapSize += pxFirstFreeBlockInRegion->xBlockSize;
-
+#if defined CONFIG_PLATFORM_8195A
+		if(((uint32_t) pxFirstFreeBlockInRegion >= SRAM_START_ADDRESS) && ((uint32_t) pxFirstFreeBlockInRegion < SDRAM_START_ADDRESS))
+			xSRAMTotalHeapSize += pxFirstFreeBlockInRegion->xBlockSize;
+		else if((uint32_t) pxFirstFreeBlockInRegion >= SDRAM_START_ADDRESS)
+			xSDRAMTotalHeapSize += pxFirstFreeBlockInRegion->xBlockSize;
+#endif
 		/* Move onto the next HeapRegion_t structure. */
 		xDefinedRegions++;
 		pxHeapRegion = &( pxHeapRegions[ xDefinedRegions ] );
@@ -595,7 +646,10 @@ const HeapRegion_t *pxHeapRegion;
 
 	xMinimumEverFreeBytesRemaining = xTotalHeapSize;
 	xFreeBytesRemaining = xTotalHeapSize;
-
+#if defined CONFIG_PLATFORM_8195A
+	xSRAMFreeBytesRemaining = xSRAMTotalHeapSize;
+	xSDRAMFreeBytesRemaining = xSDRAMTotalHeapSize;
+#endif
 	/* Check something was actually defined before it is accessed. */
 	configASSERT( xTotalHeapSize );
 
@@ -641,6 +695,12 @@ void* pvPortReAlloc( void *pv,  size_t xWantedSize )
 				/* Add this block to the list of free blocks. */
 				pxLink->xBlockSize &= ~xBlockAllocatedBit;
 				xFreeBytesRemaining += pxLink->xBlockSize;
+#if defined CONFIG_PLATFORM_8195A
+				if(((uint32_t) pxLink >= SRAM_START_ADDRESS) && ((uint32_t) pxLink < SDRAM_START_ADDRESS))
+					xSRAMFreeBytesRemaining += pxLink->xBlockSize;
+				else if((uint32_t) pxLink >= SDRAM_START_ADDRESS)
+					xSDRAMFreeBytesRemaining += pxLink->xBlockSize;
+#endif
 				prvInsertBlockIntoFreeList( ( ( BlockLink_t * ) pxLink ) );
 			}
 			xTaskResumeAll();

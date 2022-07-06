@@ -18,7 +18,7 @@
 #ifndef LOG_UART_API_H
 #define LOG_UART_API_H
 
-#if CONFIG_PLATFORM_8195A
+#if defined(CONFIG_PLATFORM_8195A) && (CONFIG_PLATFORM_8195A == 1)
 
 #include "device.h"
 #include "serial_api.h"

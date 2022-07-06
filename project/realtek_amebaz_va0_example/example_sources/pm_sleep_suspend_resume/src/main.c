@@ -75,7 +75,7 @@ u32 uart_resume(u32 expected_idle_time, void *param)
 u32 uart_lateresume(u32 expected_idle_time, void *param)
 {
 	DBG_8195A("uart_late_resume \n");
-	pmu_set_sysactive_time(PMU_LOGUART_DEVICE, 5000);
+	pmu_set_sysactive_time(5000);
 	return TRUE;
 }
 
@@ -98,7 +98,7 @@ void psm_sleep_uart(void)
 	pmu_register_sleep_callback(PMU_UART0_DEVICE, uart_suspend, NULL, uart_resume, NULL);
 	pmu_register_delay_callback(PMU_UART0_DEVICE, uart_lateresume, NULL);
 
-	pmu_set_sysactive_time(PMU_LOGUART_DEVICE, 5000);
+	pmu_set_sysactive_time(5000);
 	pmu_release_wakelock(PMU_OS);
 
 	vTaskDelete(NULL);

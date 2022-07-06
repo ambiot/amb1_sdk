@@ -186,8 +186,8 @@ int i2c_slave_set_for_rd_req(i2c_t *obj, int set);
 int i2c_slave_set_for_data_nak(i2c_t *obj, int set_nak);
 ///@}
 
-#if CONFIG_PLATFORM_8711B
-///@name AmebaZ Only 
+#if ((defined(CONFIG_PLATFORM_8711B) && (CONFIG_PLATFORM_8711B == 1)) || (defined (CONFIG_PLATFORM_8721D) && (CONFIG_PLATFORM_8721D == 1)))
+///@name AmebaZ and AmebaD
 ///@{
 /**
   * @brief  I2C master send data and read data in poll mode.
@@ -201,7 +201,7 @@ int i2c_slave_set_for_data_nak(i2c_t *obj, int set_nak);
   */
 int i2c_repeatread(i2c_t *obj, int address, u8 *pWriteBuf, int Writelen, u8 *pReadBuf, int Readlen) ;
 ///@}
-#endif //CONFIG_PLATFORM_8711B
+#endif //(CONFIG_PLATFORM_8711B||CONFIG_PLATFORM_8721D)
 
 /*\@}*/
 

@@ -10,7 +10,7 @@
 #include "ameba_soc.h"
 #include "main.h"
 
-#define PWM_PERIOD	40000000/32768
+#define PWM_PERIOD	(XTAL_ClkGet()/32768)
 
 void tim5_gen_pwm_32k()
 {
@@ -33,9 +33,13 @@ void tim5_gen_pwm_32k()
 }
 
 void tim4_capture_ISR(u32 data)
-{
+{	
+	u32 value1,value2;
 	u32 value = TIM4->CCMRx[0] & 0xFFFF;
-	DBG_8195A("Pulse number: %d, %s\n", value, (value == 3276 || value == 3277) ? "success" : "fail");
+
+	value1 = XTAL_ClkGet()/(PWM_PERIOD+1);
+	value2 = XTAL_ClkGet()/(PWM_PERIOD+1)+1;
+	DBG_8195A("Pulse number: %d, %s\n", value, (value == value1|| value == value2 ? "success" : "fail");
 	RTIM_INTClear(TIMx[4]);
 }
 
@@ -46,7 +50,7 @@ void tim4_capture_pulse_num()
 		
 	RTIM_TimeBaseStructInit(&TIM_InitStruct_temp);
 	TIM_InitStruct_temp.TIM_Idx = 4;
-	TIM_InitStruct_temp.TIM_Prescaler = 199;
+	TIM_InitStruct_temp.TIM_Prescaler = ((XTAL_ClkGet())/200000)-1;
 	TIM_InitStruct_temp.TIM_Period = 19999; //interrupt every 100ms
 	RTIM_TimeBaseInit(TIM4, &TIM_InitStruct_temp, TIMx_irq[4], (IRQ_FUN) tim4_capture_ISR, 0);
 

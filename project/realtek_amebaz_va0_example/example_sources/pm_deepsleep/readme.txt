@@ -19,4 +19,5 @@ LED is turned on again after device initialize.
 
 It can be easily measure power consumption in normal mode and deep sleep mode before/after push the putton.
 
-NOTE:Before trigger device enter deep sleep mode, should connect PA_5 to GND to avoid incorrectly waking up by floating
+NOTE:Before trigger device enter deep sleep mode, should connect PA_5 to GND to avoid incorrectly waking up by floating¡£
+To change the wakepin, need to config the dsleep_wakepin_config[] in rtl8710b_dsleepcfg.c

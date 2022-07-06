@@ -310,11 +310,27 @@ static int _freertos_pop_from_xqueue( _xqueue* queue, void* message, u32 timeout
     return 0;
 }
 
+
+static int _freertos_peek_from_xqueue( _xqueue* queue, void* message, u32 timeout_ms )
+{
+	if(timeout_ms == RTW_WAIT_FOREVER) {
+		timeout_ms = portMAX_DELAY;
+	} else {
+		timeout_ms = rtw_ms_to_systime(timeout_ms);
+	}
+
+    if ( xQueuePeek( *queue, message, timeout_ms ) != pdPASS )
+    {
+        return -1;
+    }
+
+    return 0;
+}
 static int _freertos_deinit_xqueue( _xqueue* queue )
 {
     int result = 0;
 
-	  if( uxQueueMessagesWaiting( queue ) )
+	  if( uxQueueMessagesWaiting( *queue ) )
 	  {
 	  	  result = -1;
 	  }
@@ -376,7 +392,15 @@ static void _freertos_usleep_os(int us)
 
 static void _freertos_mdelay_os(int ms)
 {
+#if defined(CONFIG_PLATFORM_8195A)
 	vTaskDelay(ms / portTICK_RATE_MS);
+#elif defined(CONFIG_PLATFORM_8711B)
+	if (pmu_yield_os_check()) {
+		vTaskDelay(ms / portTICK_RATE_MS);
+	} else {
+		DelayMs(ms);
+	}
+#endif
 }
 
 static void _freertos_udelay_os(int us)
@@ -778,7 +802,7 @@ void _freertos_wakelock_timeout(uint32_t timeout)
 	
 #elif defined(CONFIG_PLATFORM_8711B)
 	if (pmu_yield_os_check()) 
-		pmu_set_sysactive_time(PMU_WLAN_DEVICE, timeout);
+		pmu_set_sysactive_time(timeout);
 	else
 		DBG_INFO("can't aquire wake during suspend flow!!\n");
 #endif
@@ -833,6 +857,7 @@ const struct osdep_service_ops osdep_service = {
 	_freertos_init_xqueue,			//rtw_init_xqueue
 	_freertos_push_to_xqueue,		//rtw_push_to_xqueue
 	_freertos_pop_from_xqueue,		//rtw_pop_from_xqueue
+	_freertos_peek_from_xqueue,		//rtw_peek_from_xqueue
 	_freertos_deinit_xqueue,		//rtw_deinit_xqueue
 	_freertos_get_current_time,		//rtw_get_current_time
 	_freertos_systime_to_ms,		//rtw_systime_to_ms

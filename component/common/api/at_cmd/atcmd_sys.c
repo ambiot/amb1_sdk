@@ -85,6 +85,8 @@ void fATSY(void *arg)
 #endif
 
 #if defined(CONFIG_PLATFORM_8711B)
+char set_key[40];
+_Pragma ("diag_suppress=Pe181")
 void fATSK(void *arg)
 {
 	int argc = 0;
@@ -99,6 +101,7 @@ void fATSK(void *arg)
 		AT_DBG_MSG(AT_FLAG_RDP, AT_DBG_ALWAYS, "[ATSK] Usage: ATSK=RSIP_EN");
 		AT_DBG_MSG(AT_FLAG_RDP, AT_DBG_ALWAYS, "[ATSK] Usage: ATSK=RSIP_DIS");
 		AT_DBG_MSG(AT_FLAG_RDP, AT_DBG_ALWAYS, "[ATSK] Usage: ATSK=RSIP_KEY[value(hex)]");
+		AT_DBG_MSG(AT_FLAG_RDP, AT_DBG_ALWAYS, "[ATSK] Usage: ATSK=RSIP_KEY_CHECK[value(hex)]");
 		return;
 	}
 
@@ -145,7 +148,22 @@ void fATSK(void *arg)
 			&key[8], &key[9], &key[10], &key[11], &key[12], &key[13], &key[14], &key[15]);
 
 		EFUSE_OTF_KEY(key);
+		strcpy(set_key,argv[2]);
 		AT_DBG_MSG(AT_FLAG_RDP, AT_DBG_ALWAYS, "[ATSK] Set RSIP key done");
+	}else if(strcmp(argv[1], "RSIP_KEY_CHECK") == 0){
+		u32 origin_data;
+		if(argc != 3){
+			AT_DBG_MSG(AT_FLAG_RDP, AT_DBG_ALWAYS, "[ATSK] Usage: ATSK=RSIP_KEY_CHECK[value(hex)]");
+			return;
+		}
+
+		if(strlen(argv[2]) != 8){
+			AT_DBG_MSG(AT_FLAG_RDP, AT_DBG_ALWAYS, "[ATSK] Err: origin_data length should be 4 bytes");
+			return;
+		}
+		
+		sscanf(argv[2], "%08x", &origin_data);
+		efuse_otf_check(origin_data);
 	}else{
 		AT_DBG_MSG(AT_FLAG_RDP, AT_DBG_ALWAYS, "[ATSK] Usage: ATSK=RDP_EN");
 		AT_DBG_MSG(AT_FLAG_RDP, AT_DBG_ALWAYS, "[ATSK] Usage: ATSK=RDP_KEY[value(hex)]");
@@ -157,6 +175,7 @@ void fATSK(void *arg)
 	}
 	
 }
+_Pragma ("diag_warning=Pe181")
 #endif
 
 #if SUPPORT_MP_MODE
@@ -661,19 +680,78 @@ void fATSJ(void *arg)
 	}
 }
 
+
+#if WIFI_LOGO_CERTIFICATION_CONFIG
+
+#include "device_lock.h"
+
+#define FLASH_ADDR_SW_VERSION 	FAST_RECONNECT_DATA+0x900
+#define SW_VERSION_LENGTH 	32
+
+
+void fATSV(void *arg)
+{
+	unsigned char sw_version[SW_VERSION_LENGTH+1];
+	flash_t flash;
+
+	if(!arg){
+		printf("[ATSV]Usage: ATSV=[SW_VERSION]\n\r");
+		return;
+    }
+
+	if(strlen((char*)arg) > SW_VERSION_LENGTH){
+		printf("[ATSV] ERROR : SW_VERSION length can't exceed %d\n\r",SW_VERSION_LENGTH);
+		return;
+	}
+
+	memset(sw_version,0,SW_VERSION_LENGTH+1);
+	strncpy(sw_version, (char*)arg, strlen((char*)arg));
+
+	device_mutex_lock(RT_DEV_LOCK_FLASH);
+	flash_erase_sector(&flash, FAST_RECONNECT_DATA);
+	flash_stream_write(&flash, FLASH_ADDR_SW_VERSION, strlen((char*)arg), (uint8_t *) sw_version);
+	device_mutex_unlock(RT_DEV_LOCK_FLASH);
+
+	printf("[ATSV] Write SW_VERSION to flash : %s\n\r",sw_version);
+
+}
+#endif
+
+
 void fATSx(void *arg)
 {
+	/* To avoid gcc warnings */
+	( void ) arg;
+	
 //	uint32_t ability = 0;
 	char buf[64];
 	
 	AT_PRINTK("[ATS?]: _AT_SYSTEM_HELP_");
-	AT_PRINTK("[ATS?]: COMPILE TIME: %s", RTL8195AFW_COMPILE_TIME);
+	AT_PRINTK("[ATS?]: COMPILE TIME: %s", RTL_FW_COMPILE_TIME);
 //	wifi_get_drv_ability(&ability);
 	strcpy(buf, "v");
 //	if(ability & 0x1)
 //		strcat(buf, "m");
-	strcat(buf, ".3.4." RTL8195AFW_COMPILE_DATE);
+	strcat(buf, ".4.0." RTL_FW_COMPILE_DATE);
+
+#if WIFI_LOGO_CERTIFICATION_CONFIG
+	flash_t		flash;
+	unsigned char sw_version[SW_VERSION_LENGTH+1];
+
+	memset(sw_version,0,SW_VERSION_LENGTH+1);
+
+	device_mutex_lock(RT_DEV_LOCK_FLASH);
+	flash_stream_read(&flash, FLASH_ADDR_SW_VERSION, SW_VERSION_LENGTH, (uint8_t *)sw_version);
+	device_mutex_unlock(RT_DEV_LOCK_FLASH);
+
+	if(sw_version[0] != 0xff)
+		AT_PRINTK("[ATS?]: SW VERSION: %s", sw_version);
+	else
+		AT_PRINTK("[ATS?]: SW VERSION: %s", buf);
+
+#else
 	AT_PRINTK("[ATS?]: SW VERSION: %s", buf);
+#endif
 }
 #elif ATCMD_VER == ATVER_2
 
@@ -1161,7 +1239,7 @@ void fATSL(void *arg)
 		case '?': // get status
 			AT_DBG_MSG(AT_FLAG_OS, AT_DBG_ALWAYS, "[ATSL] wakelock:0x%08x", pmu_get_wakelock_status());
 #if (configGENERATE_RUN_TIME_STATS == 1)
-			pmu_get_wakelock_hold_stats((char *)cBuffer);
+			pmu_get_wakelock_hold_stats((char *)cBuffer, sizeof(cBuffer));
 			AT_DBG_MSG(AT_FLAG_OS, AT_DBG_ALWAYS, "%s", cBuffer);
 #endif
 			break;
@@ -1219,6 +1297,9 @@ log_item_t at_sys_items[] = {
 	{"ATS!", fATSc,},	// Debug config setting
 	{"ATS#", fATSt,},	// test command
 	{"ATS?", fATSx,},	// Help
+#if WIFI_LOGO_CERTIFICATION_CONFIG
+	{"ATSV", fATSV},				// Write SW version for wifi logo test
+#endif
 #elif ATCMD_VER == ATVER_2 //#if ATCMD_VER == ATVER_1
 	{"AT", 	 fATS0,},	// test AT command ready
 	{"ATS?", fATSh,},	// list all AT command

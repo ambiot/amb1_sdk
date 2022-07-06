@@ -73,7 +73,7 @@ void rdp_function_call(void)
 		DBG_8195A("rdp_result = 0x%x, no_rdp_result=0x%x\n", rdp_result, no_rdp_result);
 		
 		if(rdp_result != no_rdp_result) {
-			DBG_8195A("rdp_protection_func call ok \n");
+			DBG_8195A("rdp_protection_func call fail \n");
 		}
 	}
 }

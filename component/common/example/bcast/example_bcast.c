@@ -57,7 +57,7 @@ static void example_bcast_thread(void *param)
 			struct sockaddr_in *to_sin = (struct sockaddr_in*) &to;
 			to_sin->sin_family = AF_INET;
 			to_sin->sin_port = htons(port);
-			to_sin->sin_addr.s_addr = INADDR_ANY;
+			to_sin->sin_addr.s_addr = INADDR_BROADCAST;
 
 			if((sendLen = sendto(socket, packet, packetLen, 0, &to, sizeof(struct sockaddr))) < 0)
 				printf("ERROR: sendto broadcast\n");

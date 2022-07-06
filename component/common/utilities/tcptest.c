@@ -8,7 +8,7 @@
 #include <lwip/inet_chksum.h>
 #include <platform/platform_stdlib.h>
 
-#define BSD_STACK_SIZE		    256
+#define BSD_STACK_SIZE		    512
 #define DEFAULT_PORT            5001
 #define DEFAULT_TIME            10
 #define SERVER_BUF_SIZE         1500
@@ -31,6 +31,7 @@ struct iperf_data_t{
 	uint8_t  server_ip[16];
 	uint8_t  start;
 	uint8_t  tos_value;
+	uint8_t  tof_value;
 };
 
 struct iperf_tcp_client_hdr{
@@ -40,6 +41,11 @@ struct iperf_tcp_client_hdr{
 	uint32_t bufferlen;
 	uint32_t mWinband;
 	uint32_t mAmount;
+};
+struct iperf_udp_datagram{
+	uint32_t id;
+	uint32_t tv_sec;
+	uint32_t tv_usec;
 };
 
 struct iperf_udp_client_hdr{
@@ -53,6 +59,28 @@ struct iperf_udp_client_hdr{
 	uint32_t mWinband;
 	uint32_t mAmount;
 };
+
+struct iperf_udp_server_hdr{
+	uint32_t flags;
+	uint32_t total_len1;
+	uint32_t total_len2;
+	uint32_t stop_sec;
+	uint32_t stop_usec;
+	uint32_t error_cnt;
+	uint32_t outorder_cnt;
+	uint32_t datagrams;
+	uint32_t jitter1;
+	uint32_t jitter2;
+};
+
+/**
+  * @brief  The enumeration lists the tof_mode types.
+  */
+enum {
+	RTW_TOF_MODE_KBIT = 0,
+	RTW_TOF_MODE_MBIT,
+};
+typedef unsigned long rtw_tof_mode_t;
 
 struct iperf_data_t tcp_server_data,tcp_client_data,udp_server_data,udp_client_data;
 
@@ -79,6 +107,9 @@ int tcp_client_func(struct iperf_data_t iperf_data)
 	uint32_t            start_time, end_time, bandwidth_time, report_start_time;
 	uint64_t            total_size=0, bandwidth_size=0, report_size=0;
 	struct iperf_tcp_client_hdr client_hdr;
+#if LWIP_TCP_KEEPALIVE
+	int keepalive = 1, keepalive_idle = 3, keepalive_interval = 5, keepalive_count = 1;  //parameters depends on user's application scenario
+#endif /* LWIP_TCP_KEEPALIVE */
 
 	// for internal tese
 	iperf_data.bandwidth = 0;
@@ -99,11 +130,23 @@ int tcp_client_func(struct iperf_data_t iperf_data)
 		goto Exit2;
 	}
 
+#if LWIP_TCP_KEEPALIVE
+	// enable socket keepalive with keepalive timeout = idle(3) + interval(5) * count(1) = 8 seconds
+	if(setsockopt(iperf_data.client_fd, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive)) != 0)
+		printf("ERROR: SO_KEEPALIVE\n");
+	if(setsockopt(iperf_data.client_fd, IPPROTO_TCP, TCP_KEEPIDLE, &keepalive_idle, sizeof(keepalive_idle)) != 0)
+		printf("ERROR: TCP_KEEPIDLE\n");
+	if(setsockopt(iperf_data.client_fd, IPPROTO_TCP, TCP_KEEPINTVL, &keepalive_interval, sizeof(keepalive_interval)) != 0)
+		printf("ERROR: TCP_KEEPINTVL\n");
+	if(setsockopt(iperf_data.client_fd, IPPROTO_TCP, TCP_KEEPCNT, &keepalive_count, sizeof(keepalive_count)) != 0)
+		printf("ERROR: TCP_KEEPCNT\n");
+#endif /* LWIP_TCP_KEEPALIVE */
+
 	//initialize value in dest
 	memset(&ser_addr, 0, sizeof(ser_addr));
 	ser_addr.sin_family = AF_INET;
 	ser_addr.sin_port = htons(iperf_data.port);
-	ser_addr.sin_addr.s_addr = inet_addr(iperf_data.server_ip);
+	ser_addr.sin_addr.s_addr = inet_addr((char const*)iperf_data.server_ip);
 
 	printf("\n\r%s: Server IP=%s, port=%d", __func__,iperf_data.server_ip, iperf_data.port);
 	printf("\n\r%s: Create socket fd = %d", __func__,iperf_data.client_fd);
@@ -152,7 +195,13 @@ int tcp_client_func(struct iperf_data_t iperf_data)
 			}
 
 			if( (iperf_data.report_interval != DEFAULT_REPORT_INTERVAL) && ((end_time - report_start_time) >= (configTICK_RATE_HZ * iperf_data.report_interval))){
-				printf("\n\r%s: Send %d KBytes in %d ms, %d Kbits/sec",__func__, (uint32_t)(report_size/KB),(uint32_t)(end_time-report_start_time),((uint32_t)(report_size*8)/(end_time - report_start_time)));
+				if(iperf_data.tof_value == RTW_TOF_MODE_KBIT){
+					printf("\n\r%s: Send %d KBytes in %d ms, %d Kbits/sec",__func__, (uint32_t)(report_size/KB),(uint32_t)(end_time-report_start_time),((uint32_t)(report_size*8)/(end_time - report_start_time)));				  
+				}
+				else if(iperf_data.tof_value == RTW_TOF_MODE_MBIT){
+					printf("\n\r%s: Send %.2f MBytes in %d ms, %.2f Mbits/sec",__func__, ((1.0*report_size)/MB/1.0),(uint32_t)(end_time-report_start_time),((report_size*8.0)/(end_time - report_start_time)/1000/1.0));			  				  
+				}
+
 				report_start_time = end_time;
 				bandwidth_time = end_time;
 				report_size = 0;
@@ -183,7 +232,13 @@ int tcp_client_func(struct iperf_data_t iperf_data)
 			}
 			
 			if( (iperf_data.report_interval != DEFAULT_REPORT_INTERVAL) && ((end_time - report_start_time) >= (configTICK_RATE_HZ * iperf_data.report_interval))) {
-				printf("\n\r%s: Send %d KBytes in %d ms, %d Kbits/sec",__func__, (uint32_t)(report_size/KB),(uint32_t)(end_time-report_start_time),((uint32_t)(report_size*8)/(end_time - report_start_time)));
+				if(iperf_data.tof_value == RTW_TOF_MODE_KBIT){
+					printf("\n\r%s: Send %d KBytes in %d ms, %d Kbits/sec",__func__, (uint32_t)(report_size/KB),(uint32_t)(end_time-report_start_time),((uint32_t)(report_size*8)/(end_time - report_start_time)));				  
+				}
+				else if(iperf_data.tof_value == RTW_TOF_MODE_MBIT){
+					printf("\n\r%s: Send %.2f MBytes in %d ms, %.2f Mbits/sec",__func__, ((1.0*report_size)/MB/1.0),(uint32_t)(end_time-report_start_time),((report_size*8.0)/(end_time - report_start_time)/1000/1.0));				  				  
+				}
+
 				report_start_time = end_time;
 				bandwidth_time = end_time;
 				report_size = 0;
@@ -191,7 +246,12 @@ int tcp_client_func(struct iperf_data_t iperf_data)
 			}
 		}
 	}
-	printf("\n\r%s: [END] Totally send %d KBytes in %d ms, %d Kbits/sec",__func__, (uint32_t)(total_size/KB),(uint32_t)(end_time-start_time),((uint32_t)(total_size*8)/(end_time - start_time)));
+	if(iperf_data.tof_value == RTW_TOF_MODE_KBIT){
+		printf("\n\r%s: [END] Totally send %d KBytes in %d ms, %d Kbits/sec",__func__, (uint32_t)(total_size/KB),(uint32_t)(end_time-start_time),((uint32_t)(total_size*8)/(end_time - start_time)));			  
+	}
+	else if(iperf_data.tof_value == RTW_TOF_MODE_MBIT){
+		printf("\n\r%s: [END] Totally send %.1f MBytes in %d ms, %.2f Mbits/sec",__func__, ((1.0*total_size)/MB/1.0),(uint32_t)(end_time-start_time),((total_size*8.0)/(end_time - start_time)/1000/1.0));		  				  
+	}	
 
 Exit1:
 	closesocket(iperf_data.client_fd);
@@ -229,7 +289,10 @@ int tcp_server_func(struct iperf_data_t iperf_data)
 
 	printf("\n\r%s: Create socket fd = %d", __func__,iperf_data.server_fd);
 
-	setsockopt( iperf_data.server_fd, SOL_SOCKET, SO_REUSEADDR, (const char *) &n, sizeof( n ) );
+	if(setsockopt( iperf_data.server_fd, SOL_SOCKET, SO_REUSEADDR, (const char *) &n, sizeof( n ) ) != 0){
+		printf("\n\r[ERROR] %s: Set sockopt failed", __func__);
+		goto Exit2;
+	}
 
 	//initialize structure dest
 	memset(&ser_addr, 0, sizeof(ser_addr));
@@ -251,8 +314,8 @@ int tcp_server_func(struct iperf_data_t iperf_data)
 	}
 	printf("\n\r%s: Listen port %d",__func__,iperf_data.port);
 
-Restart:
-	if( (iperf_data.client_fd = accept(iperf_data.server_fd, (struct sockaddr*)&client_addr, &addrlen)) < 0){
+//Restart:
+	if( (iperf_data.client_fd = accept(iperf_data.server_fd, (struct sockaddr*)&client_addr, (u32_t*)&addrlen)) < 0){
 		printf("\n\r[ERROR] %s: Accept TCP client socket error!",__func__);
 		goto Exit2;
 	}
@@ -275,7 +338,7 @@ Restart:
 				if(xTaskCreate(tcp_client_handler, "tcp_client_handler", BSD_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1 + PRIORITIE_OFFSET, &g_tcp_client_task) != pdPASS)
 					printf("\n\rTCP ERROR: Create TCP client task failed.");
 				else{
-					strncpy(tcp_client_data.server_ip, inet_ntoa(client_addr.sin_addr), (strlen(inet_ntoa(client_addr.sin_addr))) );
+					strncpy((char*)tcp_client_data.server_ip, inet_ntoa(client_addr.sin_addr), (strlen(inet_ntoa(client_addr.sin_addr))) );
 					tcp_client_data.port = ntohl(client_hdr.mPort);
 					tcp_client_data.buf_size = CLIENT_BUF_SIZE;
 					tcp_client_data.report_interval = DEFAULT_REPORT_INTERVAL;
@@ -302,13 +365,25 @@ Restart:
 		end_time = xTaskGetTickCount();
 		total_size+=recv_size;
 		report_size+=recv_size;
-		if( (iperf_data.report_interval != DEFAULT_REPORT_INTERVAL) && ((end_time - report_start_time) >= (configTICK_RATE_HZ * iperf_data.report_interval)) && ((end_time - report_start_time) <= (configTICK_RATE_HZ * (iperf_data.report_interval + 1)))) {
-			printf("\n\r%s: Receive %d KBytes in %d ms, %d Kbits/sec",__func__, (uint32_t) (report_size/KB),(uint32_t) (end_time-report_start_time),((uint32_t) (report_size*8)/(end_time - report_start_time)));
+		if( (iperf_data.report_interval != DEFAULT_REPORT_INTERVAL) && ((end_time - report_start_time) >= (configTICK_RATE_HZ * iperf_data.report_interval)) ) {		
+			if(iperf_data.tof_value == RTW_TOF_MODE_KBIT){
+				printf("\n\r%s: Receive %d KBytes in %d ms, %d Kbits/sec",__func__, (uint32_t) (report_size/KB),(uint32_t) (end_time-report_start_time),(uint32_t) ((uint64_t)(report_size*8)/(end_time - report_start_time)));			  
+			}
+			else if(iperf_data.tof_value == RTW_TOF_MODE_MBIT){
+				printf("\n\r%s: Receive %.2f MBytes in %d ms, %.2f Mbits/sec",__func__, ((1.0*report_size)/MB/1.0),(uint32_t) (end_time-report_start_time), ((report_size*8.0)/(end_time - report_start_time)/1000/1.0));				  				  
+			}
+
 			report_start_time = end_time;
 			report_size = 0;
 		}
 	}
-	printf("\n\r%s: [END] Totally receive %d KBytes in %d ms, %d Kbits/sec",__func__, (uint32_t) (total_size/KB),(uint32_t) (end_time-start_time),((uint32_t) (total_size*8)/(end_time - start_time)));
+
+	if(iperf_data.tof_value == RTW_TOF_MODE_KBIT){
+		printf("\n\r%s: [END] Totally receive %d KBytes in %d ms, %d Kbits/sec",__func__, (uint32_t) (total_size/KB),(uint32_t) (end_time-start_time),(uint32_t) ((uint64_t)(total_size*8)/(end_time - start_time)));		  
+	}
+	else if(iperf_data.tof_value == RTW_TOF_MODE_MBIT){
+		printf("\n\r%s: [END] Totally receive %.1f MBytes in %d ms, %.2f Mbits/sec",__func__,  ((1.0*total_size)/MB/1.0),(uint32_t) (end_time-start_time), ((total_size*8.0)/(end_time - start_time)/1000/1.0));				  				  
+	}
 
 Exit1:
 	// close the connected socket after receiving from connected TCP client
@@ -334,7 +409,10 @@ int udp_client_func(struct iperf_data_t iperf_data)
 	int                 addrlen = sizeof(struct sockaddr_in);
 	uint32_t            start_time, end_time, bandwidth_time,report_start_time;
 	uint64_t            total_size=0, bandwidth_size=0, report_size=0;
-	struct iperf_udp_client_hdr client_hdr;
+	struct iperf_udp_client_hdr client_hdr = {0};
+    u32_t now; 
+    uint32_t id_cnt = 0;
+	int tos_value = (int)iperf_data.tos_value;
 
 	udp_client_buffer = pvPortMalloc(iperf_data.buf_size);
 	if(!udp_client_buffer){
@@ -356,23 +434,27 @@ int udp_client_func(struct iperf_data_t iperf_data)
 	memset(&ser_addr, 0, sizeof(ser_addr));
 	ser_addr.sin_family = AF_INET;
 	ser_addr.sin_port = htons(iperf_data.port);
-	ser_addr.sin_addr.s_addr = inet_addr(iperf_data.server_ip);
+	ser_addr.sin_addr.s_addr = inet_addr((char const*)iperf_data.server_ip);
 
 	printf("\n\r%s: Server IP=%s, port=%d", __func__,iperf_data.server_ip, iperf_data.port);
 	printf("\n\r%s: Create socket fd = %d", __func__,iperf_data.client_fd);
 
-	lwip_setsockopt(iperf_data.client_fd,IPPROTO_IP,IP_TOS,&iperf_data.tos_value,sizeof(iperf_data.tos_value));
+	if(setsockopt(iperf_data.client_fd,IPPROTO_IP,IP_TOS,&tos_value,sizeof(int)) != 0){
+		printf("\n\r[ERROR] %s: Set sockopt failed", __func__);
+		goto Exit1;
+	}
+
+	client_hdr.numThreads = htonl(0x00000001);
+	client_hdr.mPort = htonl(iperf_data.port);
+	client_hdr.bufferlen = 0;
+	client_hdr.mWinband = htonl(iperf_data.bandwidth);
 
 	if(g_udp_bidirection){
 		client_hdr.id = 0;
 		client_hdr.tv_sec = 0;
 		client_hdr.tv_usec = 0;
 		client_hdr.flags = htonl(0x80000001);
-		client_hdr.numThreads = htonl(0x00000001);
-		client_hdr.mPort = htonl(iperf_data.port);
-		client_hdr.bufferlen = 0;
-		client_hdr.mWinband = htonl(iperf_data.bandwidth);
-		client_hdr.mAmount = htonl(~(iperf_data.time*100) + 1);
+		client_hdr.mAmount = htonl(~(iperf_data.time*100) + 1);		
 		memcpy(udp_client_buffer, &client_hdr, sizeof(client_hdr));
 	}
 
@@ -381,16 +463,23 @@ int udp_client_func(struct iperf_data_t iperf_data)
 		end_time = start_time;
 		bandwidth_time = start_time;
 		report_start_time = start_time;
+		client_hdr.mAmount = htonl(~(iperf_data.time*100) + 1);
 		while ( ((end_time - start_time) <= (configTICK_RATE_HZ * iperf_data.time)) && (!g_udp_terminate) ) {
+	     		now = xTaskGetTickCount();
+	     		client_hdr.id = htonl(id_cnt); 
+	     		client_hdr.tv_sec  = htonl(now / 1000); 
+	     		client_hdr.tv_usec = htonl((now % 1000) * 1000); 
+			memcpy(udp_client_buffer, &client_hdr, sizeof(client_hdr));
 			if( sendto(iperf_data.client_fd, udp_client_buffer, iperf_data.buf_size,0,(struct sockaddr*)&ser_addr, addrlen) < 0){
-				//printf("\n\r[ERROR] %s: UDP client send data error",__func__);
+				//Add delay to avoid consuming too much CPU when data link layer is busy
+				vTaskDelay(2);
 			}else{
 				total_size+=iperf_data.buf_size;
 				bandwidth_size+=iperf_data.buf_size;
 				report_size+=iperf_data.buf_size;
 			}
 			end_time = xTaskGetTickCount();
-			
+			id_cnt++;
 			if( (bandwidth_size >= iperf_data.bandwidth) && ((end_time - bandwidth_time) < (configTICK_RATE_HZ*1)) ){
 				vTaskDelay(configTICK_RATE_HZ * 1 - (end_time - bandwidth_time));
 				end_time = xTaskGetTickCount();
@@ -399,7 +488,13 @@ int udp_client_func(struct iperf_data_t iperf_data)
 			}
 
 			if( (iperf_data.report_interval != DEFAULT_REPORT_INTERVAL) && ((end_time - report_start_time) >= (configTICK_RATE_HZ * iperf_data.report_interval))){
-				printf("\n\r%s: Send %d KBytes in %d ms, %d Kbits/sec",__func__, (uint32_t)(report_size/KB),(uint32_t)(end_time-report_start_time),((uint32_t)(report_size*8)/(end_time - report_start_time)));
+				if(iperf_data.tof_value == RTW_TOF_MODE_KBIT){
+					printf("\n\r%s: Send %d KBytes in %d ms, %d Kbits/sec",__func__, (uint32_t)(report_size/KB),(uint32_t)(end_time-report_start_time),((uint32_t)(report_size*8)/(end_time - report_start_time)));	  
+				}
+				else if(iperf_data.tof_value == RTW_TOF_MODE_MBIT){
+				  	printf("\n\r%s: Send %.2f MBytes in %d ms, %.2f Mbits/sec",__func__, ((1.0*report_size)/MB/1.0),(uint32_t)(end_time-report_start_time),((report_size*8.0)/(end_time - report_start_time)/1000/1.0));
+				}				
+
 				report_start_time = end_time;
 				bandwidth_time = end_time;
 				report_size = 0;
@@ -412,7 +507,13 @@ int udp_client_func(struct iperf_data_t iperf_data)
 		end_time = start_time;
 		bandwidth_time = start_time;
 		report_start_time = start_time;
+		client_hdr.mAmount = htonl(iperf_data.total_size);
 		while ( (total_size < iperf_data.total_size) && (!g_udp_terminate) ) {
+                        now = xTaskGetTickCount();	     		
+                        client_hdr.id = htonl(id_cnt); 
+	     		client_hdr.tv_sec  = htonl(now / 1000); 
+	     		client_hdr.tv_usec = htonl((now % 1000) * 1000); 
+			memcpy(udp_client_buffer, &client_hdr, sizeof(client_hdr)); 
 			if( sendto(iperf_data.client_fd, udp_client_buffer, iperf_data.buf_size,0,(struct sockaddr*)&ser_addr, addrlen) < 0){
 				//printf("\n\r[ERROR] %s: UDP client send data error",__func__);
 			}else{
@@ -421,7 +522,7 @@ int udp_client_func(struct iperf_data_t iperf_data)
 				report_size+=iperf_data.buf_size;
 			}
 			end_time = xTaskGetTickCount();
-
+			id_cnt++;
 			if( (bandwidth_size >= iperf_data.bandwidth) && ((end_time - bandwidth_time) < (configTICK_RATE_HZ*1)) ){
 				vTaskDelay(configTICK_RATE_HZ * 1 - (end_time - bandwidth_time));
 				end_time = xTaskGetTickCount();
@@ -430,7 +531,13 @@ int udp_client_func(struct iperf_data_t iperf_data)
 			}
 			
 			if( (iperf_data.report_interval != DEFAULT_REPORT_INTERVAL) && ((end_time - report_start_time) >= (configTICK_RATE_HZ * iperf_data.report_interval))) {
-				printf("\n\r%s: Send %d KBytes in %d ms, %d Kbits/sec",__func__, (uint32_t)(report_size/KB),(uint32_t)(end_time-report_start_time),((uint32_t)(report_size*8)/(end_time - report_start_time)));
+				if(iperf_data.tof_value == RTW_TOF_MODE_KBIT){
+					printf("\n\r%s: Send %d KBytes in %d ms, %d Kbits/sec",__func__, (uint32_t)(report_size/KB),(uint32_t)(end_time-report_start_time),((uint32_t)(report_size*8)/(end_time - report_start_time)));	  
+				}
+				else if(iperf_data.tof_value == RTW_TOF_MODE_MBIT){
+				  	printf("\n\r%s: Send %.2f MBytes in %d ms, %.2f Mbits/sec",__func__, ((1.0*report_size)/MB/1.0),(uint32_t)(end_time-report_start_time),((report_size*8.0)/(end_time - report_start_time)/1000/1.0));
+				}				
+			
 				report_start_time = end_time;
 				bandwidth_time = end_time;
 				report_size = 0;
@@ -438,8 +545,70 @@ int udp_client_func(struct iperf_data_t iperf_data)
 			}
 		}
 	}
-	printf("\n\r%s: [END] Totally send %d KBytes in %d ms, %d Kbits/sec",__func__, (uint32_t)(total_size/KB),(uint32_t)(end_time-start_time),((uint32_t)(total_size*8)/(end_time - start_time)));
 
+	if(iperf_data.tof_value == RTW_TOF_MODE_KBIT){
+		printf("\n\r%s: [END] Totally send %d KBytes in %d ms, %d Kbits/sec",__func__, (uint32_t)(total_size/KB),(uint32_t)(end_time-start_time),((uint32_t)(total_size*8)/(end_time - start_time)));			  
+	}
+	else if(iperf_data.tof_value == RTW_TOF_MODE_MBIT){
+		printf("\n\r%s: [END] Totally send %.2f MBytes in %d ms, %.2f Mbits/sec",__func__, ((1.0*total_size)/MB/1.0),(uint32_t)(end_time-start_time),((total_size*8.0)/(end_time - start_time)/1000/1.0));		  				  
+	}
+
+	// send a final terminating datagram
+	i = 0;
+	int rc; 
+	fd_set readSet; 
+	struct timeval timeout; 
+	uint32_t stop_ms;
+	uint64_t total_len;	
+	
+	now = xTaskGetTickCount();
+	client_hdr.id = htonl(-id_cnt); 
+	client_hdr.tv_sec  = htonl(now / 1000); 
+	client_hdr.tv_usec = htonl((now % 1000) * 1000); 
+	memcpy(udp_client_buffer, &client_hdr, sizeof(client_hdr));
+
+	while(i < 10){
+		i++;
+		sendto(iperf_data.client_fd, udp_client_buffer, iperf_data.buf_size,0,(struct sockaddr*)&ser_addr, addrlen);
+
+		// wait until the socket is readable, or our timeout expires 
+		FD_ZERO( &readSet ); 
+		FD_SET( iperf_data.client_fd, &readSet ); 
+		timeout.tv_sec  = 0; 
+		timeout.tv_usec = 250000; // quarter second, 250 ms 
+		rc = select( iperf_data.client_fd+1, &readSet, NULL, NULL, &timeout ); 
+		if( rc == -1 )
+			break;
+
+		if ( rc == 0 ) {
+			// select timed out 
+			continue;
+		} else {
+			// socket ready to read 
+			rc = read( iperf_data.client_fd, udp_client_buffer, iperf_data.buf_size); 
+			if ( rc < 0 ) 
+				break;
+			if ( rc >= (int) (sizeof(struct iperf_udp_datagram) + sizeof(struct iperf_udp_server_hdr)) ) {
+				struct iperf_udp_datagram *UDP_Hdr;
+				struct iperf_udp_server_hdr *hdr;
+
+				UDP_Hdr = (struct iperf_udp_datagram*) udp_client_buffer;
+				hdr = (struct iperf_udp_server_hdr*) (UDP_Hdr+1);
+				printf("\n\r%s: Server Report", __func__);
+				if ( (ntohl(hdr->flags) & 0x80000000) != 0 ) {
+					stop_ms = ntohl( hdr->stop_sec )*1000 + ntohl( hdr->stop_usec ) /1000;
+					total_len = (((uint64_t) ntohl( hdr->total_len1 )) << 32) +ntohl( hdr->total_len2 );
+					if(iperf_data.tof_value == RTW_TOF_MODE_KBIT){
+						printf("\n\r%s: [END] Totally send %d KBytes in %d ms, %d Kbits/sec", __func__, (uint32_t)(total_len/KB), stop_ms, (uint32_t)(total_len*8/stop_ms));			  
+					}
+					else if(iperf_data.tof_value == RTW_TOF_MODE_MBIT){
+						printf("\n\r%s: [END] Totally send %.2f MBytes in %d ms, %.2f Mbits/sec", __func__, ((1.0*total_len)/MB/1.0), stop_ms, (total_len*8.0/stop_ms/1000/1.0));	  				  
+					}			
+				}
+			}
+			break; 
+		}
+	}
 Exit1:
 	close(iperf_data.client_fd);
 Exit2:
@@ -475,7 +644,10 @@ int udp_server_func(struct iperf_data_t iperf_data)
 	}
 	printf("\n\r%s: Create socket fd = %d, port = %d", __func__,iperf_data.server_fd,iperf_data.port);
 
-	setsockopt( iperf_data.server_fd, SOL_SOCKET, SO_REUSEADDR, (const char *) &n, sizeof( n ) );
+	if(setsockopt( iperf_data.server_fd, SOL_SOCKET, SO_REUSEADDR, (const char *) &n, sizeof( n ) ) != 0){
+		printf("\n\r[ERROR] %s: Set sockopt failed", __func__);
+		goto Exit1;
+	}
 
 	//initialize structure dest
 	memset(&ser_addr, 0, sizeof(ser_addr));
@@ -492,7 +664,7 @@ int udp_server_func(struct iperf_data_t iperf_data)
 	printf("\n\r%s: Bind socket successfully",__func__);
 
 	//wait for first packet to start
-	recv_size = recvfrom(iperf_data.server_fd,udp_server_buffer,iperf_data.buf_size,0,(struct sockaddr *) &client_addr,&addrlen);
+	recv_size = recvfrom(iperf_data.server_fd,udp_server_buffer,iperf_data.buf_size,0,(struct sockaddr *) &client_addr,(u32_t*)&addrlen);
 	total_size+=recv_size;
 	report_size+=recv_size;
 	start_time = xTaskGetTickCount();
@@ -517,7 +689,7 @@ int udp_server_func(struct iperf_data_t iperf_data)
 				if(xTaskCreate(udp_client_handler, "udp_client_handler", BSD_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1 + PRIORITIE_OFFSET, &g_udp_client_task) != pdPASS)
 					printf("\r\nUDP ERROR: Create UDP client task failed.");
 				else{
-					strncpy(udp_client_data.server_ip, inet_ntoa(client_addr.sin_addr), (strlen(inet_ntoa(client_addr.sin_addr))) );
+					strncpy((char*)udp_client_data.server_ip, inet_ntoa(client_addr.sin_addr), (strlen(inet_ntoa(client_addr.sin_addr))) );
 					udp_client_data.port = ntohl(client_hdr.mPort);
 					udp_client_data.bandwidth = ntohl(client_hdr.mWinband);
 					udp_client_data.buf_size = CLIENT_BUF_SIZE;
@@ -539,7 +711,7 @@ int udp_server_func(struct iperf_data_t iperf_data)
 
 	if(time_boundary){
 		while ( ((end_time - start_time) <= (configTICK_RATE_HZ * client_hdr.mAmount )) && (!g_udp_terminate) ) {
-			recv_size = recvfrom(iperf_data.server_fd,udp_server_buffer,iperf_data.buf_size,0,(struct sockaddr *) &client_addr,&addrlen);
+			recv_size = recvfrom(iperf_data.server_fd,udp_server_buffer,iperf_data.buf_size,0,(struct sockaddr *) &client_addr,(u32_t*)&addrlen);
 			if( recv_size < 0){
 				printf("\n\r[ERROR] %s: Receive data failed",__func__);
 				goto Exit1;
@@ -552,15 +724,20 @@ int udp_server_func(struct iperf_data_t iperf_data)
 			end_time = xTaskGetTickCount();
 			total_size+=recv_size;
 			report_size+=recv_size;
-			if( (iperf_data.report_interval != DEFAULT_REPORT_INTERVAL) && ((end_time - report_start_time) >= (configTICK_RATE_HZ * iperf_data.report_interval)) && ((end_time - report_start_time) <= (configTICK_RATE_HZ * (iperf_data.report_interval + 1)))) {
-				printf("\n\r%s: Receive %d KBytes in %d ms, %d Kbits/sec",__func__,(uint32_t) (report_size/KB),(uint32_t)(end_time-report_start_time),((uint32_t)(report_size*8)/(end_time - report_start_time)));
+			if( (iperf_data.report_interval != DEFAULT_REPORT_INTERVAL) && ((end_time - report_start_time) >= (configTICK_RATE_HZ * iperf_data.report_interval))) {
+				if(iperf_data.tof_value == RTW_TOF_MODE_KBIT){
+				  	printf("\n\r%s: Receive %d KBytes in %d ms, %d Kbits/sec",__func__,(uint32_t) (report_size/KB),(uint32_t)(end_time-report_start_time),((uint32_t)(report_size*8)/(end_time - report_start_time)));		  
+				}
+				else if(iperf_data.tof_value == RTW_TOF_MODE_MBIT){
+					printf("\n\r%s: Receive %.2f MBytes in %d ms, %.2f Mbits/sec",__func__, ((1.0*report_size)/MB/1.0),(uint32_t)(end_time-report_start_time),((report_size*8.0)/(end_time - report_start_time)/1000/1.0));			  				  
+				}
 				report_start_time = end_time;
 				report_size = 0;
 			}
 		}
 	}else if(size_boundary){
 		while ( (total_size < client_hdr.mAmount) && (!g_udp_terminate) ) {
-			recv_size = recvfrom(iperf_data.server_fd,udp_server_buffer,iperf_data.buf_size,0,(struct sockaddr *) &client_addr,&addrlen);
+			recv_size = recvfrom(iperf_data.server_fd,udp_server_buffer,iperf_data.buf_size,0,(struct sockaddr *) &client_addr,(u32_t*)&addrlen);
 			if( recv_size < 0){
 				printf("\n\r[ERROR] %s: Receive data failed",__func__);
 				goto Exit1;
@@ -574,13 +751,23 @@ int udp_server_func(struct iperf_data_t iperf_data)
 			total_size+=recv_size;
 			report_size+=recv_size;
 			if( (iperf_data.report_interval != DEFAULT_REPORT_INTERVAL) && ((end_time - report_start_time) >= (configTICK_RATE_HZ * iperf_data.report_interval)) && ((end_time - report_start_time) <= (configTICK_RATE_HZ * (iperf_data.report_interval + 1)))) {
-				printf("\n\r%s: Receive %d KBytes in %d ms, %d Kbits/sec",__func__,(uint32_t) (report_size/KB),(uint32_t)(end_time-report_start_time),((uint32_t)(report_size*8)/(end_time - report_start_time)));
+				if(iperf_data.tof_value == RTW_TOF_MODE_KBIT){
+				  	printf("\n\r%s: Receive %d KBytes in %d ms, %d Kbits/sec",__func__,(uint32_t) (report_size/KB),(uint32_t)(end_time-report_start_time),(uint32_t) ((uint64_t)(report_size*8)/(end_time - report_start_time)));		  
+				}
+				else if(iperf_data.tof_value == RTW_TOF_MODE_MBIT){
+				  	printf("\n\r%s: Receive %.2f MBytes in %d ms, %.2f Mbits/sec",__func__, ((1.0*report_size)/MB/1.0),(uint32_t)(end_time-report_start_time),((report_size*8.0)/(end_time - report_start_time)/1000/1.0));		  				  
+				}		
 				report_start_time = end_time;
 				report_size = 0;
 			}
 		}
 	}
-	printf("\n\r%s: [END] Totally receive %d KBytes in %d ms, %d Kbits/sec",__func__,(uint32_t) (total_size/KB),(uint32_t)(end_time-start_time),((uint32_t)(total_size*8)/(end_time - start_time)));
+	if(iperf_data.tof_value == RTW_TOF_MODE_KBIT){
+		printf("\n\r%s: [END] Totally receive %d KBytes in %d ms, %d Kbits/sec",__func__,(uint32_t) (total_size/KB),(uint32_t) (end_time-start_time),(uint32_t) ((uint64_t)(total_size*8)/(end_time - start_time)));		  
+	}
+	else if(iperf_data.tof_value == RTW_TOF_MODE_MBIT){
+		printf("\n\r%s: [END] Totally receive %.2f MBytes in %d ms, %.2f Mbits/sec",__func__, ((1.0*total_size)/MB/1.0),(uint32_t) (end_time-start_time), ((total_size*8.0)/(end_time - start_time)/1000/1.0));				  				  
+	}
 
 Exit1:
 	// close the listening socket
@@ -596,6 +783,9 @@ Exit2:
 
 static void tcp_client_handler(void *param)
 {
+	/* To avoid gcc warnings */
+	( void ) param;
+	
 	vTaskDelay(100);
 
 	printf("\n\rTCP: Start TCP client!");
@@ -612,6 +802,9 @@ static void tcp_client_handler(void *param)
 
 static void tcp_server_handler(void *param)
 {
+	/* To avoid gcc warnings */
+	( void ) param;
+	
 	vTaskDelay(100);
 
 	printf("\n\rTCP: Start TCP server!");
@@ -627,6 +820,9 @@ static void tcp_server_handler(void *param)
 
 static void udp_client_handler(void *param)
 {
+	/* To avoid gcc warnings */
+	( void ) param;
+	
 	vTaskDelay(100);
 
 	printf("\n\rUDP: Start UDP client!");
@@ -637,13 +833,16 @@ static void udp_client_handler(void *param)
 #endif
 
 	printf("\n\rUDP: UDP client stopped!");
-
+	memset(&udp_client_data, 0, sizeof(udp_client_data));
 	g_udp_client_task = NULL;
 	vTaskDelete(NULL);	
 }
 
 static void udp_server_handler(void *param)
 {
+	/* To avoid gcc warnings */
+	( void ) param;
+	
 	vTaskDelay(100);
 
 	printf("\n\rUDP: Start UDP server!");
@@ -654,6 +853,7 @@ static void udp_server_handler(void *param)
 #endif
 
 	printf("\n\rUDP: UDP server stopped!");
+	memset(&udp_server_data, 0, sizeof(udp_server_data));
 	g_udp_server_task = NULL;
 	vTaskDelete(NULL);	
 }
@@ -702,7 +902,8 @@ void cmd_tcp(int argc, char **argv)
 		goto Exit;
 
 	g_tcp_terminate = 0;
-
+	g_tcp_bidirection = 0;
+	
 	while(argv_count<=argc){
 		//first operation
 		if(argv_count == 2){
@@ -712,7 +913,9 @@ void cmd_tcp(int argc, char **argv)
 					return;
 				}else{
 					memset(&tcp_server_data,0,sizeof(struct iperf_data_t));
+					memset(&tcp_client_data,0,sizeof(struct iperf_data_t));
 					tcp_server_data.start = 1;
+					tcp_server_data.tof_value = RTW_TOF_MODE_KBIT;
 					argv_count++;
 				}
 			}
@@ -752,8 +955,10 @@ void cmd_tcp(int argc, char **argv)
 					if(argc < (argv_count+1))
 						goto Exit;
 					memset(&tcp_client_data,0,sizeof(struct iperf_data_t));
+					memset(&tcp_server_data,0,sizeof(struct iperf_data_t));
 					tcp_client_data.start = 1;
-					strncpy(tcp_client_data.server_ip, argv[2], (strlen(argv[2])>16)?16:strlen(argv[2]));
+					tcp_client_data.tof_value = RTW_TOF_MODE_KBIT;
+					strncpy((char*)tcp_client_data.server_ip, argv[2], (strlen(argv[2])>16)?16:strlen(argv[2]));
 					argv_count+=2;
 				}
 			}
@@ -821,6 +1026,33 @@ void cmd_tcp(int argc, char **argv)
 					goto Exit;
 				argv_count+=2;
 			}
+			else if(strcmp(argv[argv_count-1], "-f") == 0){
+				if(argc < (argv_count+1))
+					goto Exit;
+				if(tcp_server_data.start){
+					if(strcmp(argv[argv_count],"k") == 0){
+					  	tcp_server_data.tof_value = RTW_TOF_MODE_KBIT;
+					}
+					else if(strcmp(argv[argv_count],"m") == 0){
+					  	tcp_server_data.tof_value = RTW_TOF_MODE_MBIT;
+					}
+					else
+						goto Exit;
+				}
+				else if(tcp_client_data.start){
+					if(strcmp(argv[argv_count],"k") == 0){
+					  	tcp_client_data.tof_value = RTW_TOF_MODE_KBIT;
+					}
+					else if(strcmp(argv[argv_count],"m") == 0){
+					  	tcp_client_data.tof_value = RTW_TOF_MODE_MBIT;
+					}
+					else
+						goto Exit;
+				}
+				else
+					goto Exit;
+				argv_count+=2;
+			}			
 			else{
 				goto Exit;
 			}
@@ -869,6 +1101,7 @@ Exit:
 	printf("  \r     -i    #        seconds between periodic bandwidth reports\n");
 	printf("  \r     -l    #        length of buffer to read or write (default 1460 Bytes)\n");
 	printf("  \r     -p    #        server port to listen on/connect to (default 5001)\n");
+	printf("  \r     -f    #        select 'k' or 'm' to show bandwidth (default 'k')\n");
 	printf("\n\r   Server specific:\n");
 	printf("  \r     -s             run in server mode\n");
 	printf("\n\r   Client specific:\n");
@@ -878,10 +1111,12 @@ Exit:
 	printf("  \r     -n    #[KM]    number of bytes to transmit (instead of -t)\n");
 	printf("\n\r   Example:\n");
 	printf("  \r     ATWT=-s,-p,5002\n");
-	printf("  \r     ATWT=-c,192.168.1.2,-t,100,-p,5002\n");
+	printf("  \r     ATWT=-c,192.168.1.2,-t,100,-p,5002,-f,m\n");
 	return;
 }
 
+
+extern int wext_set_tos_value(const char *ifname, unsigned char *tos_value);
 void cmd_udp(int argc, char **argv)
 {
 	int argv_count = 2;
@@ -892,6 +1127,7 @@ void cmd_udp(int argc, char **argv)
 		goto Exit;
 
 	g_udp_terminate = 0;
+	g_udp_bidirection = 0;
 
 	while(argv_count<=argc){
 		//first operation
@@ -902,7 +1138,9 @@ void cmd_udp(int argc, char **argv)
 					return;
 				}else{
 					memset(&udp_server_data,0,sizeof(struct iperf_data_t));
+					memset(&udp_client_data,0,sizeof(struct iperf_data_t));
 					udp_server_data.start = 1;
+					udp_server_data.tof_value = RTW_TOF_MODE_KBIT;
 					argv_count++;
 				}
 			}
@@ -939,8 +1177,10 @@ void cmd_udp(int argc, char **argv)
 					if(argc < (argv_count+1))
 						goto Exit;
 					memset(&udp_client_data,0,sizeof(struct iperf_data_t));
+					memset(&udp_server_data,0,sizeof(struct iperf_data_t));
 					udp_client_data.start = 1;
-					strncpy(udp_client_data.server_ip, argv[2], (strlen(argv[2])>16)?16:strlen(argv[2]));
+					udp_client_data.tof_value = RTW_TOF_MODE_KBIT;
+					strncpy((char*)udp_client_data.server_ip, argv[2], (strlen(argv[2])>16)?16:strlen(argv[2]));
 					argv_count+=2;
 				}
 			}
@@ -1041,6 +1281,33 @@ void cmd_udp(int argc, char **argv)
 					goto Exit;
 				argv_count+=2;
 			}
+			else if(strcmp(argv[argv_count-1], "-f") == 0){
+				if(argc < (argv_count+1))
+					goto Exit;
+				if(udp_server_data.start){
+					if(strcmp(argv[argv_count],"k") == 0){
+					  	udp_server_data.tof_value = RTW_TOF_MODE_KBIT;
+					}
+					else if(strcmp(argv[argv_count],"m") == 0){
+					  	udp_server_data.tof_value = RTW_TOF_MODE_MBIT;
+					}
+					else
+						goto Exit;
+				}
+				else if(udp_client_data.start){
+					if(strcmp(argv[argv_count],"k") == 0){
+					  	udp_client_data.tof_value = RTW_TOF_MODE_KBIT;
+					}
+					else if(strcmp(argv[argv_count],"m") == 0){
+					  	udp_client_data.tof_value = RTW_TOF_MODE_MBIT;
+					}
+					else
+						goto Exit;
+				}
+				else
+					goto Exit;
+				argv_count+=2;
+			}			
 			else{
 				goto Exit;
 			}
@@ -1100,6 +1367,7 @@ Exit:
 	printf("  \r     -i    #        seconds between periodic bandwidth reports\n");
 	printf("  \r     -l    #        length of buffer to read or write (default 1460 Bytes)\n");
 	printf("  \r     -p    #        server port to listen on/connect to (default 5001)\n");
+	printf("  \r     -f    #        select 'k' or 'm' to show bandwidth (default 'k')\n");
 	printf("\n\r   Server specific:\n");
 	printf("  \r     -s             run in server mode\n");
 	printf("\n\r   Client specific:\n");
@@ -1113,6 +1381,6 @@ Exit:
 #endif
 	printf("\n\r   Example:\n");
 	printf("  \r     ATWU=-s,-p,5002\n");
-	printf("  \r     ATWU=-c,192.168.1.2,-t,100,-p,5002\n");
+	printf("  \r     ATWU=-c,192.168.1.2,-t,100,-p,5002,-f,m\n");
 	return;
 }

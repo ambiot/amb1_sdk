@@ -38,7 +38,8 @@ extern "C" {
  *  @{
  */
 
-#if CONFIG_PLATFORM_8195A
+
+#if defined(CONFIG_PLATFORM_8195A) && (CONFIG_PLATFORM_8195A == 1)
 ///@name Ameba1 Only 
 ///@{
 
