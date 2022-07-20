@@ -387,7 +387,6 @@ SRC_C += ../../../component/common/example/uart_firmware_update/example_uart_upd
 SRC_C += ../../../component/common/utilities/cJSON.c
 SRC_C += ../../../component/common/utilities/http_client.c
 SRC_C += ../../../component/common/utilities/uart_socket.c
-SRC_C += ../../../component/common/utilities/webserver.c
 SRC_C += ../../../component/common/utilities/xml.c
 
 #wifi mesh application
