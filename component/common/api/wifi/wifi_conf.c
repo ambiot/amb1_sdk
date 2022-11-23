@@ -3244,8 +3244,8 @@ struct wifi_autoreconnect_param {
 };
 
 #if CONFIG_ENABLE_WPS
-char wps_profile_ssid[33]=0;
-char wps_profile_password[65]=0;
+char wps_profile_ssid[33]={0};
+char wps_profile_password[65]={0};
 #endif
 static void wifi_autoreconnect_thread(void *param)
 {
